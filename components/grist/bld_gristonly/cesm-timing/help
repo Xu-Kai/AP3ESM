@@ -1,0 +1,1 @@
+Tips:在新的平台重新编译此目录时，需要先执行make clean清除之前所有的*.mod和*.o文件（注意尤其需要保证可以删除掉perf_utils.mod和perf_mod.mod，不然重新编译会有异常），然后重新使用make编译即可

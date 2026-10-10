@@ -1,0 +1,1356 @@
+Module atm_comp_mct
+
+  use pio              , only: file_desc_t, io_desc_t, var_desc_t, iosystem_desc_t, &
+                               pio_enddef, pio_finalize, pio_initdecomp, pio_freedecomp, &
+                               pio_createfile, pio_openfile, pio_closefile, &
+							   pio_read_darray, pio_write_darray, pio_inq_varid, &
+	                           pio_def_dim, pio_put_att, pio_def_var, pio_put_var, &
+							   pio_write, pio_clobber, pio_noclobber,  &  
+							   pio_noerr, pio_bcast_error, pio_internal_error, pio_seterrorhandling, &
+							   pio_int, pio_real, pio_double, pio_char, &
+							   PIO_iotype_binary, pio_iotype_netcdf
+		                       					   
+							   
+  use mct_mod
+  use esmf
+  use seq_flds_mod
+  use seq_cdata_mod
+  use seq_infodata_mod
+  use seq_timemgr_mod
+ 
+  use shr_kind_mod     , only: cl=>shr_kind_cl, SHR_KIND_CS
+  use shr_file_mod     , only: shr_file_getunit, shr_file_freeunit, &
+                               shr_file_setLogUnit, shr_file_setLogLevel, &
+                               shr_file_getLogUnit, shr_file_getLogLevel, &
+		               shr_file_setIO
+  use shr_sys_mod      , only: shr_sys_flush, shr_sys_abort
+
+  use perf_mod
+
+   ! module from grist
+   use grist_cpl_indices	
+   use grist_constants,      only: r8, gravity, one, ptfactor
+   use grist_lib
+   use grist_mpi
+   use grist_domain_types,   only: global_domain, block_structure,output_structure, &
+                                 global_domain_data, grist_domain_check_runtime_allocated
+   use grist_nml_module,     only: set_global_vars,lbdry_flag, model_instance, model_timestep
+   use grist_nml_module,     only: use_tr_mbs, stencil_width, stencil_exchange_flag, pv_order
+   use grist_nml_module,     only: nlev, nlevp, ntracer, start_ymd, start_tod
+   use grist_grid_file_read, only: grist_read_grid_file
+
+! gcm model instance
+    use grist_gcm_control_driver,        only: grist_gcm_init, grist_gcm_run, grist_gcm_final          &
+                                              ,grist_gcm_run_prep, grist_gcm_run_exec                 &
+                                              ,grist_gcm_run_post, gcm_start_step
+    use grist_gcm_dycore_control_driver, only: grist_gcm_dycore_init, grist_gcm_dycore_run, grist_gcm_dycore_final
+    use grist_gcm_tracer_control_driver, only: grist_gcm_tracer_init, grist_gcm_tracer_run, grist_gcm_tracer_final
+    use grist_config_partition
+    use grist_datam_initial_data_module, only: grist_initial_data_destruct
+
+    use grist_physics_data_structure,    only: pstate
+#ifdef CAM5_PHYSICS
+    use grist_cam5_data_structure,       only: pstate_cam, &
+                                               psurf_cpl, psurf_cpl_ex2d, psurf_cpl_ex2d_head
+#endif
+
+#ifdef AMIPW_PHYSICS
+    use  grist_wrf_data_structure,       only: pstate_wrf, psurf_wrf, &
+                                               psurf_cpl, psurf_cpl_ex2d, psurf_cpl_ex2d_head
+#endif
+
+   use grist_destruct_module,only: destruct_global_mesh_var, destruct_local_mesh_element
+   use grist_config_mesh,    only: config_mesh_from_file
+
+! timing
+   use grist_clocks,             only: clock_id, clock_begin, clock_end, clock_summary, clock0      
+   use grist_geometric_info_icosh, only: init_geometric_info
+   use grist_mesh_weight_icosh,only: calc_trsk_weights_plg,        &
+                                   init_blocal_prime_cell,       &
+                                   init_blocal_prime_cell_4th,   &
+                                   init_blocal_dual_cell,        &
+                                   init_blocal_dual_cell_mbs,    &
+                                   init_blocal_dual_cell_4th,    &
+                                   init_blocal_dual_cell_4th_mbs,&
+                                   init_plg_sub_triangle_info,   &
+                                   fill_key_compute_pattern2
+                                   
+    implicit none
+
+!--------------------------------------------------------------------------
+! Public interfaces
+!--------------------------------------------------------------------------
+
+  public :: atm_init_mct
+  public :: atm_run_mct
+  public :: atm_final_mct
+
+!--------------------------------------------------------------------------
+! Private interfaces
+!--------------------------------------------------------------------------
+
+  private :: atm_SetgsMap_mct
+  private :: atm_import_mct
+  private :: atm_export_mct
+  private :: atm_domain_mct
+  private :: atm_read_srfrest_mct
+  private :: atm_write_srfrest_mct
+
+  type(mct_aVect)   :: a2x_a_SNAP
+  type(mct_aVect)   :: a2x_a_SUM
+
+  integer, parameter  :: nlen = 256     ! Length of character strings
+  character(len=nlen) :: fname_srf_cam  ! surface restart filename
+  character(len=nlen) :: pname_srf_cam  ! surface restart full pathname
+
+  ! Filename specifier for restart surface file
+  character(len=cl) :: rsfilename_spec_cam
+!
+! Time averaged counter for flux fields
+!
+  integer :: avg_count
+!
+! Time averaged flux fields
+!  
+  character(*), parameter :: a2x_avg_flds = "Faxa_rainc:Faxa_rainl:Faxa_snowc:Faxa_snowl"  
+!
+! Are all surface types present   
+!
+  logical :: lnd_present ! if true => land is present
+  logical :: ocn_present ! if true => ocean is present
+  
+  ! option for verbosity
+  logical                  :: debug = .false.
+  logical                  :: debug_time = .false.
+  logical                  :: do_exchange = .false. 
+  ! ATM communicator
+  integer                  :: comm_local_atm
+  integer ::  istep !grist step
+  integer ::  loop  !coupling number
+  logical ::  do_flux_in_ocn = .false.
+  
+!   logical ::  debug = .false.
+	
+    type(block_structure) ,target     :: local_block
+    integer                           :: comm,ierr
+    logical                           :: flag_rank = .true.
+    character(len=6)                  :: c_tmp
+    type(global_domain_data)          :: mesh
+    integer                           :: initclock, runclock, finalclock
+   !  integer                           :: istep
+    integer :: iulog = 6
+    real(r8)          :: dtime                 ! time step increment (sec)
+
+    public :: dtime
+    public :: local_block,istep									
+					
+contains
+
+subroutine grist_all_mesh_weight_init(local_block)
+   type(block_structure) ,target, intent(inout)  :: local_block
+   integer                           :: iii, jjj, kkk
+!
+! mesh weight
+!
+    call calc_trsk_weights_plg(local_block%full_domain)
+    call init_blocal_prime_cell(local_block%full_domain)
+    call init_plg_sub_triangle_info(local_block%full_domain)
+#ifndef USE_HALO2
+    call init_blocal_prime_cell_4th(local_block%full_domain)
+#endif
+    call init_geometric_info(local_block%full_domain)
+
+    IF(pv_order(1).gt.2.or.pv_order(2).gt.2.or.pv_order(3).gt.2)then
+       if(use_tr_mbs)then
+          call init_blocal_dual_cell_mbs(local_block%full_domain)
+       else
+          call init_blocal_dual_cell(local_block%full_domain)
+       end if
+    END IF
+!
+! part1: added for runtime opt: when using any of CP2_XX (XX=VTX,PLG,EDT,EDP,TRI)
+! it will completely delete mesh%XX element, and use all cp1 and cp2
+! for runtime compute pattern
+!
+    call fill_key_compute_pattern2(local_block%full_domain)
+!
+! write some info
+!
+    write(c_tmp,'(I0)') mpi_rank()
+    if(.false.)then
+    open(1,file="stencil_number_4th-"//trim(adjustl(c_tmp))//".txt")
+    open(2,file="stencil_index_4th-"//trim(adjustl(c_tmp))//".txt")
+    open(3,file="my_edge_on_edge_num-"//trim(adjustl(c_tmp))//".txt")
+    open(4,file="ur_cell_on_edge_num-"//trim(adjustl(c_tmp))//".txt")
+    do kkk = 1,local_block%full_domain%nv_full
+      !write(1,'(I0)') local_block%full_domain%plg(kkk)%stencil_number_4th
+      !do jjj = 1,size(local_block%full_domain%plg(kkk)%stencil_index_4th)
+      !   write(2,'(I0)') local_block%full_domain%plg(kkk)%stencil_index_4th(jjj)
+      !end do
+      !do iii = 1,2
+        !write(3,'(I0)') local_block%full_domain%edt(k)%my_edge_on_edge_num(i)
+        !write(4,'(I0)') local_block%full_domain%edt(k)%ur_cell_on_edge_num(i)
+      !end do
+    end do
+    close(4)
+    close(3)
+    close(2)
+    close(1)
+    end if
+
+    return
+ end subroutine grist_all_mesh_weight_init
+ 
+subroutine atm_init_mct( EClock, cdata_a, x2a_a, a2x_a, NLFilename )
+
+   !-----------------------------------------------------------------------
+   !
+   ! Arguments
+   !
+   type(ESMF_Clock),intent(inout)              :: EClock
+   type(seq_cdata), intent(inout)              :: cdata_a
+   type(mct_aVect), intent(inout)              :: x2a_a
+   type(mct_aVect), intent(inout)              :: a2x_a
+   character(len=*), optional,   intent(in)    :: NLFilename ! Namelist filename
+
+    !
+    ! Locals
+    !
+    type(mct_gsMap), pointer   :: gsMap_atm
+    type(mct_gGrid), pointer   :: dom_a
+    type(seq_infodata_type),pointer :: infodata
+    integer :: ATMID
+    integer :: mpicom_atm, comm
+    integer :: lsize
+    integer :: iradsw
+    logical :: exists           ! true if file exists
+    real(r8):: nextsw_cday      ! calendar of next atm shortwave
+    integer :: stepno           ! time step			 
+    integer :: dtime_sync       ! integer timestep size
+    integer :: currentymd       ! current year-month-day
+    !integer :: dtime            ! time step increment (sec)
+    integer :: atm_cpl_dt       ! driver atm coupling time step 
+    integer :: nstep            ! CAM nstep
+    integer :: dtime_grist        ! Time-step increment (sec)
+    integer :: ymd              ! CAM current date (YYYYMMDD)
+    integer :: yr               ! CAM current year
+    integer :: mon              ! CAM current month
+    integer :: day              ! CAM current day
+    integer :: tod              ! CAM current time of day (sec)
+    integer :: start_ymd        ! Start date (YYYYMMDD)
+    integer :: start_tod        ! Start time of day (sec)
+    integer :: ref_ymd          ! Reference date (YYYYMMDD)
+    integer :: ref_tod          ! Reference time of day (sec)
+    integer :: stop_ymd         ! Stop date (YYYYMMDD)
+    integer :: stop_tod         ! Stop time of day (sec)
+    logical :: perpetual_run    ! If in perpetual mode or not
+    integer :: perpetual_ymd    ! Perpetual date (YYYYMMDD)
+    integer :: shrlogunit,shrloglev ! old values
+    logical :: first_time = .true.
+    character(len=SHR_KIND_CS) :: calendar  ! Calendar type
+    character(len=SHR_KIND_CS) :: starttype ! infodata start type
+    integer :: lbnum
+    integer :: hdim1_d, hdim2_d ! dimensions of rectangular horizontal grid
+                                ! data structure, If 1D data structure, then
+                                ! hdim2_d == 1.
+    character(len=64) :: filein ! Input namelist filename
+    character(len=16) :: inst_suffix
+    integer :: nsrest
+    integer, pointer :: dof(:)
+    integer :: atm_rank, ierr
+!xukai add
+    logical:: masterproc
+    !-----------------------------------------------------------------------
+    !
+    ! Determine cdata points
+    !
+#if (defined _MEMTRACE)
+    if(masterproc) then
+      lbnum=1
+      call memmon_dump_fort('memmon.out','atm_init_mct:start::',lbnum)
+    endif                      
+#endif                         
+    call seq_cdata_setptrs(cdata_a, ID=ATMID, mpicom=mpicom_atm, &
+         gsMap=gsMap_atm, dom=dom_a, infodata=infodata)
+
+      call MPI_COMM_RANK(mpicom_atm, atm_rank, ierr)
+      masterproc = .false. 
+      if(atm_rank == 0) masterproc = .true. 
+      
+    if (first_time) then
+
+       ! Set filename specifier for restart surface file
+       ! (%c=caseid, $y=year, $m=month, $d=day, $s=seconds in day)
+       rsfilename_spec_cam = '%c.cam' // trim(inst_suffix) // '.rs.%y-%m-%d-%s.nc' 
+
+       ! Determine attribute vector indices
+
+       call grist_cpl_indices_set()
+       
+       if (masterproc) then
+          inquire(file='atm_modelio.nml'//trim(inst_suffix), exist=exists)
+          if (exists) then
+             iulog = shr_file_getUnit()
+             call shr_file_setIO('atm_modelio.nml'//trim(inst_suffix), iulog)
+          endif
+          write(iulog,*) "GRIST atmosphere model initialization"
+       endif
+       
+       call shr_file_getLogUnit (shrlogunit)
+       call shr_file_getLogLevel(shrloglev)
+       call shr_file_setLogUnit (iulog)
+
+      ! 
+      ! Get nsrest from startup type methods
+      ! 
+        if (     trim(starttype) == trim(seq_infodata_start_type_start)) then
+           nsrest = 0
+        else if (trim(starttype) == trim(seq_infodata_start_type_cont) ) then
+           nsrest = 1
+        else if (trim(starttype) == trim(seq_infodata_start_type_brnch)) then
+           nsrest = 3
+      !  else
+           write(iulog,*) 'atm_comp_mct: ERROR: unknown starttype'
+           call shr_sys_abort()
+        end if
+       !
+       ! Initialize time manager.
+       !
+       call seq_timemgr_EClockGetData(EClock, &
+                                      start_ymd=start_ymd, start_tod=start_tod, &
+                                      ref_ymd=ref_ymd, ref_tod=ref_tod,         &
+                                      stop_ymd=stop_ymd, stop_tod=stop_tod,     &
+                                      calendar=calendar )
+									  
+       !
+       ! First phase of cam initialization 
+       ! Initialize mpicom_atm, allocate cam_in and cam_out and determine 
+       ! atm decomposition (needed to initialize gsmap) 
+       ! for an initial run, cam_in and cam_out are allocated in cam_initial
+       ! for a restart/branch run, cam_in and cam_out are allocated in restart 
+       ! Set defaults then override with user-specified input and initialize time manager
+       ! Note that the following arguments are needed to cam_init for timemgr_restart only
+       !
+
+	   ! initialize mpi
+       call grist_comm_set(mpicom_atm)  !Rongxy
+       comm = grist_comm()
+
+       !
+       ! Initialize cam time manager
+       !
+       clock0     = clock_id('Total')
+       initclock  = clock_id('Initialization')
+       runclock   = clock_id('Main loop')
+       finalclock = clock_id('Final')
+
+       call clock_begin(clock0)
+       call clock_begin(initclock)
+
+       !
+       ! read mesh   
+       !
+       call set_global_vars()
+       call grist_read_grid_file(mesh, comm)
+       call config_mesh_from_file(mesh)
+       call show_basic_info(mesh, flag_rank)
+
+       !
+       ! mesh partition and init local mesh
+       !
+       call domain_decompse(mesh, comm)
+       if(mpi_rank() == 0) print *,"config_sub_domain ..."
+       call config_sub_domain(mesh, local_block, comm)
+       call destruct_global_mesh_var(mesh)
+       local_block%full_domain%local_block => local_block
+       if(mpi_rank() == 0) print *,"config_sub_domain end"
+      
+       !init mesh weight
+       call grist_all_mesh_weight_init(local_block)
+      
+       !init model instance here
+       call grist_gcm_init(local_block)
+            
+       ! part2: added for runtime opt: when using any of CP2_XX (XX=VTX,PLG,EDT,EDP,TRI)
+       ! it will completely delete mesh%XX element, and use all cp1 and cp2
+       ! for runtime compute pattern
+       call destruct_local_mesh_element(local_block%full_domain)
+	   
+       ! clean initial data in memory
+       call grist_initial_data_destruct
+	   
+       !
+       ! Initialize MCT gsMap, domain and attribute vectors (and dof)
+       !
+       call atm_SetgsMap_mct( mpicom_atm, ATMID, gsMap_atm )
+       lsize = mct_gsMap_lsize(gsMap_atm, mpicom_atm)
+
+
+	   !
+       ! Initialize MCT gsMap, domain and attribute vectors
+       !
+       call atm_SetgsMap_mct( mpicom_atm, ATMID, gsMap_atm )
+       lsize = mct_gsMap_lsize(gsMap_atm, mpicom_atm)
+   
+       ! Set dof (module variable, needed for pio for restarts)
+       call mct_gsmap_orderedpoints(gsmap_atm, mpi_rank(), dof)
+
+       !
+       ! Initialize MCT domain 
+       !
+       if (.not. allocated(psurf_cpl_ex2d%f)) allocate(psurf_cpl_ex2d%f(16, local_block%full_domain%nv_full))
+       call atm_domain_mct( lsize, gsMap_atm, dom_a )
+       !
+       ! Initialize MCT attribute vectors
+       !
+       call mct_aVect_init(a2x_a, rList=seq_flds_a2x_fields, lsize=lsize)
+       call mct_aVect_zero(a2x_a)
+       
+       call mct_aVect_init(x2a_a, rList=seq_flds_x2a_fields, lsize=lsize) 
+       call mct_aVect_zero(x2a_a)
+       
+       call mct_aVect_init(a2x_a_SNAP, rList=a2x_avg_flds, lsize=lsize)
+       call mct_aVect_zero(a2x_a_SNAP)
+       
+       call mct_aVect_init(a2x_a_SUM , rList=a2x_avg_flds, lsize=lsize)
+       call mct_aVect_zero(a2x_a_SUM )
+       !
+       ! Initialize averaging counter
+       !
+       avg_count = 0
+       !
+       ! Create initial atm export state
+       !
+       dtime = model_timestep
+       !write (*,*)'model_timestep = ',model_timestep,' dtime = ', dtime
+       call atm_export_mct( a2x_a )
+       
+       call shr_file_setLogUnit (shrlogunit)
+       call shr_file_setLogLevel(shrloglev)
+
+       first_time = .false.
+
+    else
+       
+       ! For initial run, run cam radiation/clouds and return
+       ! For restart run, read restart x2a_a
+       ! Note - a2x_a is computed upon the completion of the previous run - cam_run1 is called
+       ! only for the purposes of finishing the flux averaged calculation to compute a2x_a
+       ! Note - cam_run1 is called on restart only to have cam internal state consistent with the 
+       ! a2x_a state sent to the coupler
+
+       ! Redirect share output to cam log
+
+       call shr_file_getLogUnit (shrlogunit)
+       call shr_file_getLogLevel(shrloglev)
+       call shr_file_setLogUnit (iulog)
+
+   !
+   ! print some info
+   !
+       if(mpi_rank() == 0) then 
+          print*, "MPI Pros Num:  ",mpi_size()
+          print*, "low order bdry flag:  ", lbdry_flag
+       end if
+       if(stencil_width >= 4)then
+          stencil_exchange_flag = .false.
+          if(mpi_rank() == 0) print*,"stencil tpye:  local    halo:",stencil_width
+       else
+          stencil_exchange_flag = .true.
+          if(mpi_rank() == 0) print*,"stencil tpye:  exchange    halo:",stencil_width
+       end if
+       call clock_end(initclock)
+   !
+   ! major stepon
+   !
+       call grist_domain_check_runtime_allocated(local_block%full_domain)
+   
+       call clock_begin(runclock)
+       
+       ! settting timestep
+       if(mpi_rank() == 0) print*, "dtime=", dtime
+
+       if (.not. allocated(psurf_cpl_ex2d%f)) allocate(psurf_cpl_ex2d%f(16, local_block%full_domain%nv_full))
+	
+	   if(mpi_rank() == 0) print*,"call grist_gcm_run_prep"
+
+       call grist_gcm_run_prep(local_block%full_domain)
+
+       istep = gcm_start_step()	   
+	   loop = 1
+       if (1.eq.0)then   
+       if(nsrest.eq.0) then
+	      call atm_import_mct( x2a_a )
+          call atm_export_mct( a2x_a )
+       else
+          call atm_read_srfrest_mct( EClock, cdata_a, x2a_a, a2x_a )
+          call atm_export_mct( a2x_a )
+	   end if
+       ! End redirection of share output to cam log
+       endif
+       call shr_file_setLogUnit (shrlogunit)
+       call shr_file_setLogLevel(shrloglev)
+       
+    end if
+
+    call shr_sys_flush(iulog)
+
+ end subroutine atm_init_mct
+
+!================================================================================
+
+
+ subroutine atm_run_mct( EClock, cdata_a, x2a_a, a2x_a)
+
+   use grist_time_manager,    only: get_curr_date, get_curr_calday
+
+   !-----------------------------------------------------------------------
+   !
+   ! Arguments
+   !
+   type(ESMF_Clock)            ,intent(inout) :: EClock
+   type(seq_cdata)             ,intent(inout) :: cdata_a
+   type(mct_aVect)             ,intent(inout) :: x2a_a
+   type(mct_aVect)             ,intent(inout) :: a2x_a
+
+    !
+    ! Local variables
+    !
+    real(r8)          :: eccen
+    real(r8)          :: lambm0
+    real(r8)          :: obliqr
+    real(r8)          :: mvelpp
+
+    type(seq_infodata_type),pointer :: infodata
+    integer :: lsize           ! size of attribute vector
+    integer :: StepNo          ! time step			 
+    integer :: DTime_Sync      ! integer timestep size
+    integer :: CurrentYMD      ! current year-month-day
+    integer :: iradsw          ! shortwave radation frequency (time steps) 
+    logical :: dosend          ! true => send data back to driver
+    !real(r8) :: dtime           ! time step increment (sec)
+    integer :: atm_cpl_dt      ! driver atm coupling time step 
+    integer :: ymd_sync        ! Sync date (YYYYMMDD)
+    integer :: yr_sync         ! Sync current year
+    integer :: mon_sync        ! Sync current month
+    integer :: day_sync        ! Sync current day
+    integer :: tod_sync        ! Sync current time of day (sec)
+    integer :: ymd             ! CAM current date (YYYYMMDD)
+    integer :: yr              ! CAM current year
+    integer :: mon             ! CAM current month
+    integer :: day             ! CAM current day
+    integer :: tod             ! CAM current time of day (sec)
+    integer :: nstep           ! CAM nstep
+    integer :: shrlogunit,shrloglev ! old values
+    logical :: rstwr           ! .true. ==> write restart file before returning
+    logical :: nlend           ! Flag signaling last time-step
+    logical :: rstwr_sync      ! .true. ==> write restart file before returning
+    logical :: nlend_sync      ! Flag signaling last time-step
+    logical :: first_time = .true.
+    character(len=*), parameter :: subname="atm_run_mct"
+    !-----------------------------------------------------------------------
+    integer :: lbnum
+
+    ! Redirect share output to cam log
+     
+    call shr_file_getLogUnit (shrlogunit)
+    call shr_file_getLogLevel(shrloglev)
+    call shr_file_setLogUnit (iulog)
+    
+    ! Note that sync clock time should match cam time at end of time step/loop not beginning
+    !write(logunit,*) '111112431 ' 
+    call seq_cdata_setptrs(cdata_a, infodata=infodata)
+    call seq_timemgr_EClockGetData(EClock,curr_ymd=ymd_sync,curr_tod=tod_sync, &
+       curr_yr=yr_sync,curr_mon=mon_sync,curr_day=day_sync)
+    !write(logunit,*) '111112432 '
+    !load orbital parameters
+    call seq_infodata_GetData( infodata,                                           &
+       orb_eccen=eccen, orb_mvelpp=mvelpp, orb_lambm0=lambm0, orb_obliqr=obliqr)
+    !write(logunit,*) '111112433 '
+    nlend_sync = seq_timemgr_StopAlarmIsOn(EClock)
+    rstwr_sync = seq_timemgr_RestartAlarmIsOn(EClock)
+
+    ! Map input from mct to cam data structure
+    !write(logunit,*) '111112434 '
+    call t_startf ('CAM_import')
+	if(loop.gt.1) then
+    call atm_import_mct( x2a_a )
+	end if
+    call t_stopf  ('CAM_import')
+    !write(logunit,*) '111112435 '
+    ! Cycle over all time steps in the atm coupling interval
+    
+    dosend = .false.
+    do while (.not. dosend)
+       
+       ! Determine if dosend
+       ! When time is not updated at the beginning of the loop - then return only if
+       ! are in sync with clock before time is updated
+	   call get_curr_date(start_ymd, start_tod, istep, model_timestep, yr, mon, day, tod)
+       !if(mpi_rank()==0) write(*,*)'ymd=',ymd, 'tod=',tod
+       ymd = yr*10000 + mon*100 + day
+       tod = tod
+       dosend = (seq_timemgr_EClockDateInSync( EClock, ymd, tod))
+       !write(logunit,*) '111112436 '
+       ! Determine if time to write cam restart and stop
+       rstwr = .false.
+       if (rstwr_sync .and. dosend) rstwr = .true.
+       nlend = .false.
+       if (nlend_sync .and. dosend) nlend = .true.
+       
+       ! run gcm instance
+       call grist_gcm_run_exec(local_block%full_domain, istep)
+       istep = istep + 1
+       !write(logunit,*) '111112437 '
+       ! Map output from grit to mct data structures
+       call atm_export_mct(a2x_a )
+       !write(logunit,*) '111112438 '
+       ! Compute snapshot attribute vector for accumulation
+       
+! don't accumulate on first coupling freq ts1 and ts2
+! for consistency with ccsm3 when flxave is off
+       if (istep <= 2) then
+          call mct_aVect_copy( a2x_a, a2x_a_SUM )
+          avg_count = 1
+       else
+          call mct_aVect_copy( a2x_a, a2x_a_SNAP )
+          call mct_aVect_accum( aVin=a2x_a_SNAP, aVout=a2x_a_SUM )
+          avg_count = avg_count + 1
+       endif
+       !write(logunit,*) '111112439 '
+    end do
+
+    ! Finish accumulation of attribute vector and average and copy accumulation 
+    ! field into output attribute vector
+    loop = loop +1  
+	
+    call mct_aVect_avg ( a2x_a_SUM, avg_count)
+    call mct_aVect_copy( a2x_a_SUM, a2x_a )
+    call mct_aVect_zero( a2x_a_SUM) 
+    avg_count = 0                   
+
+    ! Write merged surface data restart file if appropriate
+     if (rstwr_sync) then
+        call atm_write_srfrest_mct( cdata_a, x2a_a, a2x_a, &
+             yr_spec=yr_sync, mon_spec=mon_sync, day_spec=day_sync, sec_spec=tod_sync)
+     end if
+    
+    ! Check for consistency of internal cam clock with master sync clock     
+    dtime = model_timestep
+    call get_curr_date(start_ymd, start_tod, istep-1, dtime, yr, mon, day, tod)
+    ymd = yr*10000 + mon*100 + day
+    tod = tod
+
+   !  .and. (.not.offline_driver_dorun)
+     
+    if ((.not.seq_timemgr_EClockDateInSync( EClock, ymd, tod )) )then
+       call seq_timemgr_EClockGetData(EClock, curr_ymd=ymd_sync, curr_tod=tod_sync )
+       write(iulog,*)' cam ymd=',ymd     ,'  cam tod= ',tod
+       write(iulog,*)'sync ymd=',ymd_sync,' sync tod= ',tod_sync
+       call shr_sys_abort( subname//': CAM clock is not in sync with master Sync Clock' )
+    end if
+    !write(logunit,*) '111112440 '
+    ! End redirection of share output to cam log
+
+    call shr_file_setLogUnit (shrlogunit)
+    call shr_file_setLogLevel(shrloglev)
+
+
+  end subroutine atm_run_mct
+
+!================================================================================
+
+  subroutine atm_final_mct( EClock, cdata_a, x2a_a, a2x_a)
+
+   type(ESMF_Clock)            ,intent(inout) :: EClock
+   type(seq_cdata)             ,intent(inout) :: cdata_a
+   type(mct_aVect)             ,intent(inout) :: x2a_a
+   type(mct_aVect)             ,intent(inout) :: a2x_a
+
+    call grist_gcm_run_post(local_block%full_domain)
+
+    call clock_end(runclock)
+    call clock_begin(finalclock)
+
+    call grist_gcm_final(local_block%full_domain)
+
+    call clock_end(finalclock)
+    call clock_end(clock0)
+    call clock_summary
+
+  end subroutine atm_final_mct
+
+!================================================================================
+  subroutine atm_SetgsMap_mct( mpicom_atm, ATMID, GSMap_atm )
+    !-------------------------------------------------------------------
+    !
+    ! Arguments
+    !
+    integer        , intent(in)  :: mpicom_atm
+    integer        , intent(in)  :: ATMID
+    type(mct_gsMap), intent(out) :: GSMap_atm
+
+    !
+    ! Local variables
+    !
+    integer, allocatable :: gindex(:)
+    integer :: i, n, c, ncols, sizebuf, nlcols
+   !  integer                         :: nelem
+    integer :: ier            ! error status
+
+    type(global_domain),    pointer :: dm
+    integer                         :: nelem
+    integer                         :: nconn
+    integer                         :: nnode
+    integer                         :: spatialDim = 3
+
+    ! node info
+    integer,            allocatable, dimension(:)   :: nodeIDs
+    real(8), allocatable, dimension(:)   :: nodeCoords
+    integer,            allocatable, dimension(:)   :: nodeOwners
+
+    ! element info
+    integer,            allocatable, dimension(:)   :: elemIDs
+    integer,            allocatable, dimension(:)   :: elemTypes
+    integer,            allocatable, dimension(:)   :: elemConns
+    integer,            allocatable, dimension(:)   :: elemMasks
+    real(8), allocatable, dimension(:)   :: elemAreas
+    real(8), allocatable, dimension(:)   :: elemCoords
+
+    ! for construct node owners
+    integer                                         :: nt, owner, ierr
+    integer                                         :: t_lsize(1)
+    integer,            allocatable, dimension(:)   :: tsize, displ
+    integer,            allocatable, dimension(:)   :: t_index
+    integer,            allocatable, dimension(:)   :: t_Owners
+    integer,            allocatable, dimension(:)   :: t_Owners_local
+
+    integer                         :: elementCount,ndim
+    logical                         :: nodeMaskIsPresent
+
+    character(LEN=34), parameter    :: routine = "mo_grist_cap: grist_Mesh_Construct"
+    logical                         :: Mesh_from_file = .false.
+
+    ! Get domain
+    dm => local_block%full_domain
+
+    ! number of elements & nodes
+    nelem = dm%nv_compute ! # of polygons in compute domain 
+
+    !-------------------------------------------------------------------
+
+    ! Build the atmosphere grid numbering for MCT
+    ! NOTE:  Numbering scheme is: West to East and South to North
+    ! starting at south pole.  Should be the same as what's used in SCRIP
+    
+    ! Determine global seg map
+
+    sizebuf = nelem !( +nnode为三角形，用于计算过程中的重构，不参与耦合)
+	
+    allocate(gindex(sizebuf))
+
+    do i = 1, sizebuf
+       gindex(i) = dm%v_index(i)
+    end do
+
+    n = mesh%nv
+    call mct_gsMap_init( gsMap_atm, gindex, mpicom_atm, ATMID, sizebuf, n)
+
+    deallocate(gindex)
+
+  end subroutine atm_SetgsMap_mct
+
+!===============================================================================
+
+  subroutine atm_domain_mct( lsize, gsMap_a, dom_a )
+
+    !-------------------------------------------------------------------
+    !
+    ! Arguments
+    !
+    integer        , intent(in)   :: lsize
+    type(mct_gsMap), intent(in)   :: gsMap_a
+    type(mct_ggrid), intent(inout):: dom_a  
+    !
+    ! Local Variables
+    !
+    type(global_domain),    pointer :: dm
+
+    integer                         :: nelem, iam
+    integer  :: n,i,c,ncols           ! indices	
+   !  real(r8) :: lats(pcols)           ! array of chunk latitudes
+   !  real(r8) :: lons(pcols)           ! array of chunk longitude
+   !  real(r8) :: area(pcols)           ! area in radians squared for each grid point
+    real(r8), pointer  :: data(:)     ! temporary
+    integer , pointer  :: idata(:)    ! temporary
+    real(r8), parameter:: radtodeg = 180.0_r8/SHR_CONST_PI
+    !-------------------------------------------------------------------
+    !
+    ! Initialize mct atm domain
+    !
+    call mct_gGrid_init( GGrid=dom_a, CoordChars=trim(seq_flds_dom_coord), OtherChars=trim(seq_flds_dom_other), lsize=lsize )
+    !
+    ! Allocate memory
+    !
+    allocate(data(lsize))
+    !
+    ! Initialize attribute vector with special value
+    !
+    call mct_gsMap_orderedPoints(gsMap_a, mpi_rank(), idata)
+    call mct_gGrid_importIAttr(dom_a,'GlobGridNum',idata,lsize)
+    !
+    ! Determine domain (numbering scheme is: West to East and South to North to South pole)
+    ! Initialize attribute vector with special value
+    !
+    data(:) = -9999.0_R8 
+    call mct_gGrid_importRAttr(dom_a,"lat"  ,data,lsize) 
+    call mct_gGrid_importRAttr(dom_a,"lon"  ,data,lsize) 
+    call mct_gGrid_importRAttr(dom_a,"area" ,data,lsize) 
+    call mct_gGrid_importRAttr(dom_a,"aream",data,lsize) 
+    data(:) = 0.0_R8     
+    call mct_gGrid_importRAttr(dom_a,"mask" ,data,lsize) 
+    data(:) = 1.0_R8
+    call mct_gGrid_importRAttr(dom_a,"frac" ,data,lsize)
+    !
+    ! Fill in correct values for domain components
+    !
+    ! Get domain
+    dm => local_block%full_domain
+
+    ! number of elements & nodes
+    nelem = dm%nv_compute ! # of polygons in compute domain 
+    
+    do i =1, nelem
+          data(i) = dm%vtx_lat(i)*radtodeg
+    end do
+    call mct_gGrid_importRAttr(dom_a,"lat",data,lsize) 
+    
+    do i = 1, nelem
+          data(i) = dm%vtx_lon(i)*radtodeg
+    end do
+    call mct_gGrid_importRAttr(dom_a,"lon",data,lsize) 
+
+    do i =1, nelem
+          data(i) = dm%plg_areag(i)  
+	end do
+    call mct_gGrid_importRAttr(dom_a,"area",data,lsize) 
+
+    n=0
+    do i =1, nelem
+          data(i) = 1.0_8  
+	end do
+    call mct_gGrid_importRAttr(dom_a,"mask"   ,data,lsize) 
+    deallocate(data)
+
+  end subroutine atm_domain_mct
+
+!===============================================================================
+
+  subroutine atm_import_mct( x2a_a )
+
+    !-----------------------------------------------------------------------
+    !
+    ! Uses	
+    !
+    !
+    ! Arguments
+    !
+    type(mct_aVect),    intent(inout) :: x2a_a
+   !  type(cam_in_t),     intent(inout) :: cam_in(begchunk:endchunk)
+    !
+    ! Local variables
+    !		
+    integer  :: i,lat,n,c,ig  ! indices
+    integer  :: ncell
+    logical, save :: first_time = .true.
+    
+    ncell = local_block%full_domain%nv_compute
+    
+    ig=1
+    do c=1,ncell 
+      psurf_cpl_ex2d%f(4, ig) =  x2a_a%rAttr(index_x2a_Sf_ifrac, ig)  
+      psurf_cpl_ex2d%f(5, ig) =  x2a_a%rAttr(index_x2a_Sf_ofrac, ig) 
+   if(psurf_cpl_ex2d%f(4, ig).gt.0.0_8.or.psurf_cpl_ex2d%f(5, ig).gt.0.0_8) then
+       psurf_cpl_ex2d%f(11,ig) = -x2a_a%rAttr(index_x2a_Faxx_taux,ig)     
+       psurf_cpl_ex2d%f(12,ig) = -x2a_a%rAttr(index_x2a_Faxx_tauy,ig)     
+       psurf_cpl_ex2d%f(2, ig) = -x2a_a%rAttr(index_x2a_Faxx_lat, ig)     
+       psurf_cpl_ex2d%f(1, ig) = -x2a_a%rAttr(index_x2a_Faxx_sen, ig)     
+       psurf_cpl_ex2d%f(14,ig) = -x2a_a%rAttr(index_x2a_Faxx_lwup,ig)    
+       psurf_cpl_ex2d%f(3, ig) = -x2a_a%rAttr(index_x2a_Faxx_evap,ig)  
+       psurf_cpl_ex2d%f(7, ig) =  x2a_a%rAttr(index_x2a_Sx_avsdr, ig)  
+       psurf_cpl_ex2d%f(8, ig) =  x2a_a%rAttr(index_x2a_Sx_avsdf, ig)  
+       psurf_cpl_ex2d%f(9, ig) =  x2a_a%rAttr(index_x2a_Sx_anidr, ig)  
+       psurf_cpl_ex2d%f(10,ig) =  x2a_a%rAttr(index_x2a_Sx_anidf, ig)
+       psurf_cpl_ex2d%f(6, ig) =  0.7*psurf_cpl_ex2d%f(7, ig) + 0.3* psurf_cpl_ex2d%f(8, ig) !albedo
+       psurf_cpl_ex2d%f(13,ig) =  x2a_a%rAttr(index_x2a_Sx_t,     ig)  
+   else
+       psurf_cpl_ex2d%f(11,ig) = 0.0     
+       psurf_cpl_ex2d%f(12,ig) = 0.0     
+       psurf_cpl_ex2d%f(2, ig) = 0.0     
+       psurf_cpl_ex2d%f(1, ig) = 0.0     
+       psurf_cpl_ex2d%f(14,ig) = 0.0    
+       psurf_cpl_ex2d%f(3, ig) = 0.0  
+       psurf_cpl_ex2d%f(7, ig) = 0.0  
+       psurf_cpl_ex2d%f(8, ig) = 0.0  
+       psurf_cpl_ex2d%f(9, ig) = 0.0  
+       psurf_cpl_ex2d%f(10,ig) = 0.0
+       psurf_cpl_ex2d%f(6, ig) = 0.0
+       psurf_cpl_ex2d%f(13,ig) = 0.0 
+      end if 
+       ig=ig+1
+    end do
+
+    !
+    ! if first step, determine longwave up flux from the surface temperature 
+    !
+    if (first_time) then
+        if (istep.eq.1) then
+          do i=1,ncell
+             psurf_cpl_ex2d%f(14,i) = 5.67e-8_8*(psurf_cpl_ex2d%f(13,ig))**4
+          end do
+        end if
+       first_time = .false.
+    end if
+
+    call exchange_data_2d_add (local_block%full_domain,psurf_cpl_ex2d_head, psurf_cpl_ex2d)
+    
+    call exchange_data_2d (local_block,psurf_cpl_ex2d_head)
+
+    ! put data to halo(1)
+    ncell = local_block%full_domain%nv_halo(1)
+
+    psurf_cpl%hfx   (1:ncell,1) = psurf_cpl_ex2d%f(1, 1:ncell)
+    psurf_cpl%lh    (1:ncell,1) = psurf_cpl_ex2d%f(2, 1:ncell)
+    psurf_cpl%qfx   (1:ncell,1) = psurf_cpl_ex2d%f(3, 1:ncell)
+    psurf_cpl%xice  (1:ncell,1) = psurf_cpl_ex2d%f(4, 1:ncell)
+    psurf_cpl%xocn  (1:ncell,1) = psurf_cpl_ex2d%f(5, 1:ncell)
+    psurf_cpl%alb   (1:ncell,1) = psurf_cpl_ex2d%f(6, 1:ncell)
+    psurf_cpl%asdir (1:ncell,1) = psurf_cpl_ex2d%f(7, 1:ncell)
+    psurf_cpl%asdif (1:ncell,1) = psurf_cpl_ex2d%f(8, 1:ncell)
+    psurf_cpl%aldir (1:ncell,1) = psurf_cpl_ex2d%f(9, 1:ncell)
+    psurf_cpl%aldif (1:ncell,1) = psurf_cpl_ex2d%f(10,1:ncell)
+    psurf_cpl%taux  (1:ncell,1) = psurf_cpl_ex2d%f(11,1:ncell)
+    psurf_cpl%tauy  (1:ncell,1) = psurf_cpl_ex2d%f(12,1:ncell)
+    psurf_cpl%ts    (1:ncell,1) = psurf_cpl_ex2d%f(13,1:ncell)
+    psurf_cpl%lwup  (1:ncell,1) = psurf_cpl_ex2d%f(14,1:ncell)
+
+  end subroutine atm_import_mct
+
+!===============================================================================
+
+  subroutine atm_export_mct( a2x_a )
+
+    use grist_dtp_interface_module,         only: scalar_U_wind_at_pc_full_level, &
+                                                  scalar_V_wind_at_pc_full_level, &
+                                                  scalar_qqq_at_pc_full_level
+                    
+    use grist_dycore_vars_module,           only: dycoreVarCellFull,  &
+                                                  dycoreVarCellFace,  &
+                                                  dycoreVarEdgeFull
+    use grist_tracer_transport_vars_module, only: tracerVarCellFull, &
+                                                  tracerVarEdgeFull
+
+    use grist_dycore_gcd_recon_module_2d,   only: vector_recon_perot_edge2cell_uv_2d
+
+    use grist_time_manager,                 only: get_curr_calday
+
+    use grist_zenith,                       only: zenith
+
+    implicit none
+ !-------------------------------------------------------------------
+    !
+    ! Arguments
+    !
+    type(mct_aVect),     intent(inout) :: a2x_a
+    !
+    ! Local variables
+    !
+    integer :: avsize, avnat
+    integer :: i,m,c,n,ig       ! indices
+   !  integer :: ncell            ! Number of cell
+    integer                         :: rc
+
+    integer              :: iv, ncell, icell, ilev ,nv
+    real(8)              :: julday, deltime
+    real(8)              :: factor, ss
+    real(8), allocatable :: coszrs(:), lats(:), lons(:)
+    real(8), allocatable :: scalar_pt_at_pc_full_level(:,:)
+
+    character(LEN=40), parameter    :: routine = "mo_grist_cap: gristExport_update"
+
+    !-----------------------------------------------------------------------
+
+    ! Copy from component arrays into chunk array data structure
+    ! Rearrange data from chunk structure into lat-lon buffer and subsequently
+    ! create attribute vector
+    ! number of computed cells
+    ncell = local_block%full_domain%nv_compute 
+
+    ! bakcup nv
+    nv    = local_block%full_domain%nv
+
+    local_block%full_domain%nv = local_block%full_domain%nv_halo(1)
+    
+!----------------------------------------------------------------------
+! obtain U&V
+!----------------------------------------------------------------------
+    call vector_recon_perot_edge2cell_uv_2d(local_block%full_domain,                        &
+                                           dycoreVarEdgeFull%scalar_normal_velocity_n%f,    &
+                                           scalar_U_wind_at_pc_full_level,                  &
+                                           scalar_V_wind_at_pc_full_level,                  &
+                                           nlev)
+!----------------------------------------------------------------------
+! for mxrt-like quantity, from dry to moist
+! I am not sure, but I guess the qv in WRF-physics is dry rather
+! than moist mixing ratio; so no conversion here
+!----------------------------------------------------------------------
+
+    scalar_qqq_at_pc_full_level(1:ntracer,1:nlev,1:ncell) = tracerVarCellFull%scalar_tracer_mxrt_n%f(1:ntracer,1:nlev,1:ncell)
+
+!
+! obtain pt from ptm
+!
+    allocate(scalar_pt_at_pc_full_level(nlev,local_block%full_domain%nv_full))
+    do iv = 1, ncell
+       do ilev = 1, nlev
+          scalar_pt_at_pc_full_level(ilev,iv) = dycoreVarCellFull%scalar_potential_temp_n%f(ilev,iv)/(one+ptfactor*scalar_qqq_at_pc_full_level(1,ilev,iv))
+          !if (mpi_rank()==0) write(*,*)'dycoreVarCellFull%scalar_potential_temp_n%f(ilev,iv)=',dycoreVarCellFull%scalar_potential_temp_n%f(ilev,iv),' one=',one,'  ptfactor=',ptfactor,' scalar_qqq_at_pc_full_level(1,ilev,iv)=',scalar_qqq_at_pc_full_level(1,ilev,iv)
+       end do
+    end do
+ 
+#ifdef CAM5_PHYSICS                                                  
+    ! fill states at lowest level
+    pstate%u_wind_at_pc_full_level%f   (1:nlev,1:ncell)  = scalar_U_wind_at_pc_full_level         (1:nlev,1:ncell)
+    pstate%v_wind_at_pc_full_level%f   (1:nlev,1:ncell)  = scalar_V_wind_at_pc_full_level         (1:nlev,1:ncell)
+    pstate%temp_at_pc_full_level%f     (1:nlev,1:ncell)  = dycoreVarCellFull%scalar_temp_n%f      (1:nlev,1:ncell)
+    pstate%pressure_at_pc_full_level%f (1:nlev,1:ncell)  = dycoreVarCellFull%scalar_mpressure_n%f (1:nlev,1:ncell)
+    pstate%tracer_mxrt_at_pc_full_level%f(1:ntracer,1:nlev,1:ncell) = scalar_qqq_at_pc_full_level(1:ntracer,1:nlev,1:ncell)
+#endif
+
+#ifdef AMIPW_PHYSICS                                                  
+    ! fill states at lowest level
+    do icell = 1, ncell
+       ! m-level var
+       do ilev = 1, nlev ! for full-level of grist
+          pstate_wrf%u_phy (icell,nlev+1-ilev,1)  = scalar_U_wind_at_pc_full_level(ilev,icell)
+          pstate_wrf%v_phy (icell,nlev+1-ilev,1)  = scalar_V_wind_at_pc_full_level(ilev,icell)
+          pstate_wrf%t_phy (icell,nlev+1-ilev,1)  = dycoreVarCellFull%scalar_temp_n%f (ilev,icell)
+          pstate_wrf%th_phy(icell,nlev+1-ilev,1)  = scalar_pt_at_pc_full_level(ilev,icell)
+          pstate_wrf%p_phy (icell,nlev+1-ilev,1)  = dycoreVarCellFull%scalar_mpressure_n%f(ilev,icell)
+          pstate_wrf%zzz   (icell,nlev+1-ilev,1)  = dycoreVarCellFull%scalar_geopotential_n%f(ilev,icell)/gravity
+          pstate_wrf%rhom  (icell,nlev+1-ilev,1)  = (dycoreVarCellFace%scalar_mpressure_n%f(ilev+1,icell)-dycoreVarCellFace%scalar_mpressure_n%f(ilev,icell))/&
+                                                    (dycoreVarCellFace%scalar_geopotential_n%f(ilev,icell)-dycoreVarCellFace%scalar_geopotential_n%f(ilev+1,icell))
+          pstate_wrf%moist (icell,nlev+1-ilev,1,1:ntracer)  = scalar_qqq_at_pc_full_level(1:ntracer,ilev,icell)
+          pstate_wrf%dz8w(  icell,nlev+1-ilev,1)  = (dycoreVarCellFace%scalar_geopotential_n%f(ilev,icell)-dycoreVarCellFace%scalar_geopotential_n%f(ilev+1,icell))/gravity
+       enddo
+       
+       pstate_wrf%p8w(icell,1:nlevp,1)   = dycoreVarCellFace%scalar_mpressure_n%f(nlevp:1:-1,icell)
+
+    enddo
+#endif
+
+    ! cosine of zenith
+    allocate(coszrs(ncell))
+    allocate(lons(ncell), lats(ncell))
+
+    deltime = dtime
+    do iv = 1, ncell
+       lats(iv) = local_block%full_domain%vtx_lat(iv)
+       lons(iv) = local_block%full_domain%vtx_lon(iv)
+    end do
+
+    call get_curr_calday(start_ymd, start_tod, istep+1, deltime, julday)
+    call zenith(julday, coszrs, ncell, lons, lats)
+
+#ifdef AMIPW_PHYSICS
+    pstate_wrf%coszr (1:ncell, 1) = coszrs(1:ncell)
+#endif
+
+    ig=1
+    do c=1, ncell
+!xukai comment
+
+         ! if(.not. cplpars%do_flux_in_ocn .and. trim(cplpars%flux_option_ocn) .eq. "WRF") then
+       a2x_a%rAttr(index_a2x_Sa_z      ,ig) = ( dycoreVarCellFace%scalar_geopotential_n%f(nlev,   ig)          &
+                               - dycoreVarCellFace%scalar_geopotential_n%f(nlev+1, ig) )  /gravity   
+         ! else
+         !  a2x_a%rAttr(index_a2x_Sa_z      ,ig) = ( dycoreVarCellFull%scalar_geopotential_n%f(nlev,   ig)          &
+         !                      - dycoreVarCellFace%scalar_geopotential_n%f(nlev+1, ig) ) / gravity
+         ! endif
+
+#ifdef AMIPW_PHYSICS
+          a2x_a%rAttr(index_a2x_Sa_u      ,ig) = pstate_wrf%u_phy (ig, 1, 1)   
+          a2x_a%rAttr(index_a2x_Sa_v      ,ig) = pstate_wrf%v_phy (ig, 1, 1)   
+          a2x_a%rAttr(index_a2x_Sa_tbot   ,ig) = pstate_wrf%t_phy (ig, 1, 1)   
+          a2x_a%rAttr(index_a2x_Sa_ptem   ,ig) = pstate_wrf%th_phy (ig, 1, 1)   
+          a2x_a%rAttr(index_a2x_Sa_pbot   ,ig) = pstate_wrf%p_phy (ig, 1, 1)   
+          a2x_a%rAttr(index_a2x_Sa_shum   ,ig) = pstate_wrf%moist (ig, 1, 1, 1) 
+          a2x_a%rAttr(index_a2x_Sa_dens   ,ig) = pstate_wrf%rhom   (ig, 1, 1)              
+          a2x_a%rAttr(index_a2x_Faxa_lwdn ,ig) = pstate_wrf%lwdnb (ig, 1)  
+          !a2x_a%rAttr(index_a2x_Faxa_rainc,ig) = pstate_wrf%raincv(ig, 1) /dtime *1000._r8
+          !write(*,*)'a2x_a%rAttr(index_a2x_Faxa_rainc,ig)=',a2x_a%rAttr(index_a2x_Faxa_rainc,ig),' ig=', ig, 'index_a2x_Faxa_rainc=',index_a2x_Faxa_rainc
+          !write(*,*)'psurf_wrf%raincv(ig,1)=', psurf_wrf%raincv(ig, 1),' dtime=',dtime
+          !a2x_a%rAttr(index_a2x_Faxa_rainl,ig) = psurf_wrf%rainncv(ig, 1) / dtime*1000._r8
+          !write(*,*)'a2x_a%rAttr(index_a2x_Faxa_rainc,ig)=',a2x_a%rAttr(index_a2x_Faxa_rainc,ig),'ig=', ig, 'index_a2x_Faxa_rainc=',index_a2x_Faxa_rainc
+          !a2x_a%rAttr(index_a2x_Faxa_snowc,ig) = psurf_wrf%snowncv(ig, 1) / dtime *1000._r8
+          !a2x_a%rAttr(index_a2x_Faxa_snowl,ig) = psurf_wrf%graupelncv (ig, 1) / dtime *1000._r8
+          
+          a2x_a%rAttr(index_a2x_Faxa_rainc,ig) = pstate%scalar_precc_surface%f(ig)*1000._r8
+          a2x_a%rAttr(index_a2x_Faxa_rainl,ig) = pstate%scalar_precl_surface%f(ig)*1000._r8
+          a2x_a%rAttr(index_a2x_Faxa_snowc,ig) = pstate%scalar_grapl_surface%f(ig)*1000._r8
+          a2x_a%rAttr(index_a2x_Faxa_snowl,ig) = pstate%scalar_snowl_surface%f(ig)*1000._r8
+          ! "surface_pressure" to sea level pressure, use the lowest level t/p/z 
+          ss = dycoreVarCellFull%scalar_geopotential_n%f(nlev,   ig)/gravity
+          ss = (pstate_wrf%t_phy (ig, 1, 1)+0.065*ss)/pstate_wrf%t_phy (ig, 1, 1)
+          a2x_a%rAttr(index_a2x_Sa_pslv   ,ig) = a2x_a%rAttr(index_a2x_Sa_pbot,ig) *(ss**5.256) 
+#endif
+
+#ifdef CAM5_PHYSICS
+          a2x_a%rAttr(index_a2x_Sa_u      ,ig) = pstate%u_wind_at_pc_full_level%f      (nlev,ig)   
+          a2x_a%rAttr(index_a2x_Sa_v      ,ig) = pstate%u_wind_at_pc_full_level%f      (nlev,ig)
+          a2x_a%rAttr(index_a2x_Sa_tbot   ,ig) = pstate%temp_at_pc_full_level%f        (nlev,ig)
+        if(.not. do_flux_in_ocn) then
+          a2x_a%rAttr(index_a2x_Sa_ptem   ,ig) = scalar_pt_at_pc_full_level(nlev,1:ncell)
+          a2x_a%rAttr(index_a2x_Sa_pbot   ,ig) = pstate%pressure_at_pc_full_level%f    (nlev,ig)   
+          a2x_a%rAttr(index_a2x_Sa_shum   ,ig) = pstate%tracer_mxrt_at_pc_full_level%f (1,nlev,ig)
+    !	  a2x_a%rAttr(index_a2x_Sa_dens   ,ig) = pstate_wrf%rhom   (ig, 1, 1)              
+          a2x_a%rAttr(index_a2x_Faxa_lwdn ,ig) = pstate_cam%flwds_at_pc_surface%f(ig)
+          a2x_a%rAttr(index_a2x_Faxa_rainc,ig) = pstate%scalar_prect_surface%f(ig)-pstate%scalar_snowl_surface%f(ig) &
+                                                 - pstate%scalar_snowc_surface%f(ig) ) *1000._r8
+          a2x_a%rAttr(index_a2x_Faxa_rainl,ig) = ( pstate%scalar_prect_surface%f(ig) - pstate%scalar_snowl_surface%f(ig) &
+                           - pstate%scalar_snowc_surface%f(ig) ) * 1000
+          a2x_a%rAttr(index_a2x_Faxa_snowc,ig) = pstate%scalar_snowl_surface%f(ig) *1000._r8
+          a2x_a%rAttr(index_a2x_Faxa_snowl,ig) = pstate%scalar_snowc_surface%f(ig) *1000._r8
+          ! "surface_pressure" to sea level pressure, use the lowest level t/p/z
+          ss = dycoreVarCellFull%scalar_geopotential_n%f(nlev,   ig)/gravity
+          ss = (a2x_a%rAttr(index_a2x_Sa_tbot   ,ig)+0.065*ss)a2x_a%rAttr(index_a2x_Sa_tbot   ,ig)
+          a2x_a%rAttr(index_a2x_Sa_pslv   ,ig) = a2x_a%rAttr(index_a2x_Sa_pbot,ig) *(ss**5.256)    
+#endif
+
+          a2x_a%rAttr(index_a2x_Faxa_swnet,ig) = psurf_cpl%swvisdir (ig, 1) + psurf_cpl%swvisdif (ig, 1) + &
+                                                 psurf_cpl%swnirdir (ig, 1) + psurf_cpl%swnirdif (ig, 1)
+          a2x_a%rAttr(index_a2x_Faxa_swndr,ig) = psurf_cpl%swdnnirdir (ig, 1)   
+          a2x_a%rAttr(index_a2x_Faxa_swvdr,ig) = psurf_cpl%swdnvisdir (ig, 1)   
+          a2x_a%rAttr(index_a2x_Faxa_swndf,ig) = psurf_cpl%swdnnirdif (ig, 1) 
+          a2x_a%rAttr(index_a2x_Faxa_swvdf,ig) = psurf_cpl%swdnvisdif(ig, 1)  
+
+      ig=ig+1
+    end do
+
+    ! deallocate memory
+    deallocate(coszrs, lons, lats)
+    deallocate(scalar_pt_at_pc_full_level)
+    
+  end subroutine atm_export_mct
+  
+!===========================================================================================
+!
+  subroutine atm_read_srfrest_mct( EClock, cdata_a, x2a_a, a2x_a)
+    !-----------------------------------------------------------------------
+    !
+    ! Arguments
+    !
+    type(ESMF_Clock),intent(in)    :: EClock
+    type(seq_cdata), intent(inout) :: cdata_a
+    type(mct_aVect), intent(inout) :: x2a_a
+    type(mct_aVect), intent(inout) :: a2x_a
+    !
+    ! Local variables
+    !
+    type(file_desc_t) :: File
+    integer         :: npts         ! array size
+    integer         :: rcode        ! return error code
+    type(mct_aVect) :: gData        ! global/gathered bundle data
+    integer         :: yr_spec      ! Current year
+    integer         :: mon_spec     ! Current month
+    integer         :: day_spec     ! Current day
+    integer         :: sec_spec     ! Current time of day (sec)
+    character*4     :: yr      ! Current year
+    character*2     :: mon     ! Current month
+    character*2     :: day     ! Current day
+    character*5     :: sec     ! Current time of day (sec)
+    character*16    :: mydate  ! Current time of
+    !type(iosystem_desc_t), pointer, private :: pio_subsystem
+
+    !-----------------------------------------------------------------------
+    !
+    ! Determine and open surface restart dataset
+    !
+    integer, pointer :: dof(:)
+    integer :: lnx, nf_x2a, nf_a2x, k
+    real(r8), allocatable :: tmp(:)
+    !type(file_desc_t) :: file
+    type(io_desc_t) :: iodesc
+    type(var_desc_t) :: varid
+    character(CL)    :: itemc       ! string converted to char
+    type(mct_string) :: mstring     ! mct char type
+
+    call seq_timemgr_EClockGetData( EClock, curr_yr=yr_spec,curr_mon=mon_spec, &
+         curr_day=day_spec, curr_tod=sec_spec )
+    WRITE(yr,  '(I4)') yr_spec
+    WRITE(mon, '(I2)') mon_spec
+    WRITE(day, '(I2)') day_spec
+    WRITE(sec, '(I5)') sec_spec
+    mydate = yr//'-'//mon//'-'//day//'-'//sec
+    fname_srf_cam='grist-rest.'//mydate//'.nc'
+    
+    !call pio_openfile(pio_subsystem, File, pio_iotype_netcdf, fname_srf_cam, PIO_CLOBBER)
+
+    call mct_gsmap_OrderedPoints(cdata_a%gsmap, mpi_rank(), Dof)
+    lnx = mct_gsmap_gsize(cdata_a%gsmap)
+    !call pio_initdecomp(pio_subsystem, pio_double, (/lnx/), dof, iodesc)
+    allocate(tmp(size(dof)))
+    deallocate(dof)
+
+    nf_x2a = mct_aVect_nRattr(x2a_a)
+
+    do k=1,nf_x2a
+       call mct_aVect_getRList(mstring,k,x2a_a)
+       itemc = mct_string_toChar(mstring)
+       call mct_string_clean(mstring)
+
+       call pio_seterrorhandling(File, pio_bcast_error)
+       rcode = pio_inq_varid(File,'x2a_'//trim(itemc) ,varid)
+       if (rcode == pio_noerr) then
+          call pio_read_darray(File, varid, iodesc, tmp, rcode)
+          x2a_a%rattr(k,:) = tmp(:)
+       else
+          if (mpi_rank()==0) then
+             write(iulog,*)'srfrest warning: field ',trim(itemc),' is not on restart file'
+             write(iulog,*)'for backwards compatibility will set it to 0'
+          end if
+          x2a_a%rattr(k,:) = 0._r8
+       end if
+       call pio_seterrorhandling(File, pio_internal_error)
+    end do
+
+    nf_a2x = mct_aVect_nRattr(a2x_a)
+
+    do k=1,nf_a2x
+       call mct_aVect_getRList(mstring,k,a2x_a)
+       itemc = mct_string_toChar(mstring)
+       call mct_string_clean(mstring)
+
+       rcode = pio_inq_varid(File,'a2x_'//trim(itemc) ,varid)
+       call pio_read_darray(File, varid, iodesc, tmp, rcode)
+       a2x_a%rattr(k,:) = tmp(:)
+    end do
+
+    call pio_freedecomp(File,iodesc)
+    call pio_closefile(File)
+    deallocate(tmp)
+
+  end subroutine atm_read_srfrest_mct
+
+!
+!===========================================================================================
+!
+  subroutine atm_write_srfrest_mct( cdata_a, x2a_a, a2x_a, &
+       yr_spec, mon_spec, day_spec, sec_spec)
+    
+	!-----------------------------------------------------------------------
+    !
+    ! Arguments
+    !
+    type(seq_cdata), intent(in) :: cdata_a
+    type(mct_aVect), intent(in) :: x2a_a
+    type(mct_aVect), intent(in) :: a2x_a
+    integer        , intent(in) :: yr_spec         ! Simulation year
+    integer        , intent(in) :: mon_spec        ! Simulation month
+    integer        , intent(in) :: day_spec        ! Simulation day
+    integer        , intent(in) :: sec_spec        ! Seconds into current simulation day
+    !
+    ! Local variables
+    !
+    type(file_desc_t) :: File
+    integer         :: rcode        ! return error code
+    type(mct_aVect) :: gData        ! global/gathered bundle data
+    character*4     :: yr      ! Current year
+    character*2     :: mon     ! Current month
+    character*2     :: day     ! Current day
+    character*5     :: sec     ! Current time of day (sec)
+    character*16    :: mydate  ! Current time of
+    real(r8)        :: fillvalue
+    !-----------------------------------------------------------------------
+    !
+    ! Determine and open surface restart dataset
+    !
+
+    integer, pointer :: dof(:)
+    integer :: nf_x2a, nf_a2x, lnx, dimid(1), k
+    type(var_desc_t), pointer :: varid_x2a(:), varid_a2x(:)
+    type(io_desc_t)  :: iodesc
+    character(CL)    :: itemc       ! string converted to char
+    type(mct_string) :: mstring     ! mct char type
+    !type(iosystem_desc_t), pointer, private :: pio_subsystem
+
+    WRITE(yr,  '(I4)') yr_spec
+    WRITE(mon, '(I2)') mon_spec
+    WRITE(day, '(I2)') day_spec
+    WRITE(sec, '(I5)') sec_spec
+
+    mydate = yr//'-'//mon//'-'//day//'-'//sec
+    fname_srf_cam='grist-rest.'//mydate//'.nc'
+    
+    !rcode = pio_createfile(pio_subsystem, File, pio_iotype_netcdf, trim(adjustl(fname_srf_cam)), PIO_CLOBBER)
+    
+    call mct_gsmap_OrderedPoints(cdata_a%gsmap, mpi_rank(), Dof)
+    lnx = mct_gsmap_gsize(cdata_a%gsmap)
+    !call pio_initdecomp(pio_subsystem, pio_double, (/lnx/), dof, iodesc)
+
+    deallocate(dof)
+
+    nf_x2a = mct_aVect_nRattr(x2a_a)
+    allocate(varid_x2a(nf_x2a))
+    fillvalue = 1e30
+    rcode = pio_def_dim(File,'x2a_nx',lnx,dimid(1))
+    do k = 1,nf_x2a
+       call mct_aVect_getRList(mstring,k,x2a_a)
+       itemc = mct_string_toChar(mstring)
+       call mct_string_clean(mstring)
+       rcode = pio_def_var(File,'x2a_'//trim(itemc),PIO_DOUBLE,dimid,varid_x2a(k))
+       rcode = pio_put_att(File,varid_x2a(k),"_fillvalue",fillvalue)
+    enddo
+
+    nf_a2x = mct_aVect_nRattr(a2x_a)
+    allocate(varid_a2x(nf_a2x))
+
+    rcode = pio_def_dim(File,'a2x_nx',lnx,dimid(1))
+    do k = 1,nf_a2x
+       call mct_aVect_getRList(mstring,k,a2x_a)
+       itemc = mct_string_toChar(mstring)
+       call mct_string_clean(mstring)
+       rcode = pio_def_var(File,'x2a_'//trim(itemc),PIO_DOUBLE,dimid,varid_x2a(k))
+       rcode = pio_put_att(File,varid_x2a(k),"_fillvalue",fillvalue)
+    enddo
+
+    nf_a2x = mct_aVect_nRattr(a2x_a)
+    allocate(varid_a2x(nf_a2x))
+
+    rcode = pio_def_dim(File,'a2x_nx',lnx,dimid(1))
+    do k = 1,nf_a2x
+       call mct_aVect_getRList(mstring,k,a2x_a)
+       itemc = mct_string_toChar(mstring)
+       call mct_string_clean(mstring)
+       rcode = PIO_def_var(File,'a2x_'//trim(itemc),PIO_DOUBLE,dimid,varid_a2x(k))
+       rcode = PIO_put_att(File,varid_a2x(k),"_fillvalue",fillvalue)
+    enddo
+
+    rcode = pio_enddef(File)  ! don't check return code, might be enddef already
+
+    do k=1,nf_x2a
+       call pio_write_darray(File, varid_x2a(k), iodesc, x2a_a%rattr(k,:), rcode)
+    end do
+
+    do k=1,nf_a2x
+       call pio_write_darray(File, varid_a2x(k), iodesc, a2x_a%rattr(k,:), rcode)
+    end do
+
+    deallocate(varid_x2a, varid_a2x)
+
+    call pio_freedecomp(File,iodesc)
+    call pio_closefile(file)
+
+  end subroutine atm_write_srfrest_mct
+
+end module atm_comp_mct

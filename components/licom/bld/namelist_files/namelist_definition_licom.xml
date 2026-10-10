@@ -1,0 +1,1905 @@
+<?xml version="1.0"?>
+
+<?xml-stylesheet type="text/xsl" href="http://www.cgd.ucar.edu/~cam/namelist/namelist_definition_CICE.xsl"?>
+
+<namelist_definition>
+
+<!-- Each namelist variable is defined in an <entry> element.  The
+     content of the element is the documentation of how the variable is
+     used.  Other aspects of the variable's definition are expressed as
+     attributes of the <entry> element.  Note that it is an XML requirement
+     that the attribute values are enclosed in quotes.  The attributes are:
+
+     id
+          The variable's name.  *** N.B. *** The name must be lower case.
+          The module convert all namelist variable names to lower case
+          since Fortran is case insensitive.
+
+     type
+          An abbreviation of the fortran declaration for the variable.
+	  Valid declarations are:
+
+          char*n  
+	  integer
+	  logical
+	  real
+
+	  Any of these types may be followed by a comma separated list of
+	  integers enclosed in parenthesis to indicate an array.
+
+	  The current namelist validation code only distinquishes between
+	  string and non-string types.
+
+     input_pathname
+          Only include this attribute to indicate that the variable
+          contains the pathname of an input dataset that resides in the
+          CESM inputdata directory tree.  
+
+	  The recognized values are "abs" to indicate that an absolute
+          pathname is required, or "rel:var_name" to indicate that the
+          pathname is relative and that the namelist variable "var_name"
+          contains the absolute root directory.
+
+     category
+          A category assigned for organizing the documentation.
+
+     group
+          The namelist group that the variable is declared in.
+
+     valid_values
+          This is an optional attribute that is mainly useful for variables
+          that have only a small number of allowed values.
+                                                                        -->
+
+<!-- - - - - - - - - - - - - - - - - - -->
+<!-- Group: domain_nml               - -->
+<!-- - - - - - - - - - - - - - - - - - -->
+
+<entry 
+id="nprocs_clinic" 
+type="integer" 
+category="decomp" 
+group="domain_nml" >
+Number of processors in the baroclinic distribution.
+
+Default: Set by CESM scripts
+</entry>
+
+<entry 
+id="nprocs_tropic" 
+type="integer" 
+category="decomp" 
+group="domain_nml" >
+Number of processors in the barotropic distribution.
+
+Default: Set by CESM scripts
+</entry>
+
+<entry 
+id="clinic_distribution_type" 
+type="char*256" 
+category="decomp" 
+group="domain_nml" 
+valid_values="cartesian,balanced,spacecurve,blockone" >
+Method to use to distribute blocks in baroclinic distribution.
+
+Valid Values: 'cartesian', 'balanced', 'spacecurve', 'blockone'
+Default: 'cartesian'
+</entry>
+
+<entry 
+id="tropic_distribution_type" 
+type="char*256" 
+category="decomp" 
+group="domain_nml" 
+valid_values="cartesian,balanced,spacecurve,blockone" >
+Method to use to distribute blocks in barotropic distribution.
+
+Valid Values: 'cartesian', 'balanced', 'spacecurve', 'blockone'
+Default: 'cartesian'
+</entry>
+
+<entry 
+id="ew_boundary_type" 
+type="char*256" 
+category="decomp" 
+group="domain_nml"
+valid_values="cyclic,closed" >
+Type of boundary in the logical east-west direction for global domain.
+
+Valid Values: 'cyclic', 'closed'
+Default: 'cyclic'
+</entry>
+
+<entry 
+id="ns_boundary_type" 
+type="char*256" 
+category="decomp" 
+group="domain_nml"
+valid_values="cyclic,closed,tripole" >
+Type of boundary in the logical north-south direction for global domain.
+
+Valid Values: 'cyclic', 'closed', 'tripole'
+Default: 'closed'
+</entry>
+
+<entry
+id="profile_barrier"
+type="logical"
+category="decomp"
+group="domain_nml" >
+Flag to add MPI_Barrier calls for timing studies in time-step module.
+
+Default: .false. 
+</entry>
+
+<!-- - - - - - - - - - - - - - - - - - -->
+<!-- Group: diag_nml         - -->
+<!-- - - - - - - - - - - - - - - - - - -->
+
+<entry 
+id="diag_msf"
+type="logical"
+category="diag"
+group="diag_nml" >
+Default: .true.
+</entry>
+
+<entry 
+id="diag_mth"
+type="logical"
+category="diag"
+group="diag_nml" >
+Default: .true.
+</entry>
+
+<entry 
+id="diag_bsf"
+type="logical"
+category="diag"
+group="diag_nml" >
+Default: .true.
+</entry>
+
+<entry 
+id="simple_assm"
+type="logical"
+category="diag"
+group="diag_nml" >
+Default: .false.
+</entry>
+
+<!-- - - - - - - - - - - - - - - - - - -->
+<!-- Group: tracer_nml               - -->
+<!-- - - - - - - - - - - - - - - - - - -->
+
+<entry 
+id="aft1"
+type="real"
+category="tracer"
+group="tracer_nml" >
+
+Default: Set by LICOM scripts
+</entry>
+
+<entry 
+id="ahv"
+type="real"
+category="tracer"
+group="tracer_nml" >
+
+Default: Set by LICOM scripts
+</entry>
+
+<entry 
+id="gamma"
+type="real"
+category="tracer"
+group="tracer_nml" >
+
+Default: Set by LICOM scripts
+</entry>
+
+<entry 
+id="boundary_restore"
+type="integer"
+category="tracer"
+group="tracer_nml" >
+0 for no restoring , 1 for lateral restoring boundary, and 2 for surface salinity restoring boundary
+
+Default: 2
+</entry>
+
+<entry 
+id="kvt"
+type="integer"
+category="tracer"
+group="tracer_nml" >
+
+Default: Set by LICOM scripts, 55
+</entry>
+
+<entry 
+id="lfrc_core" 
+type="logical" 
+category="tracer" 
+group="tracer_nml" >
+Flag to define FRC_CORE in def-undef.h of LICOM.
+
+Default: '.false.'
+</entry>
+
+<!-- - - - - - - - - - - - - - - - - - -->
+<!-- Group: bclinc_nml               - -->
+<!-- - - - - - - - - - - - - - - - - - -->
+
+<entry 
+id="afc1"
+type="real"
+category="bclinc"
+group="bclinc_nml" >
+Default: Set by LICOM scripts
+</entry>
+
+<!-- - - - - - - - - - - - - - - - - - -->
+<!-- Group: io_nml                   - -->
+<!-- - - - - - - - - - - - - - - - - - -->
+
+<entry 
+id="num_iotasks" 
+type="integer" 
+category="io" 
+group="io_nml" >
+Number of input / output tasks.
+
+Default: 1
+</entry>
+
+<entry 
+id="lredirect_stdout" 
+type="logical" 
+category="io" 
+group="io_nml" >
+Flag to redirect stdout to a log file.
+
+Default: '.true.'
+</entry>
+
+<entry 
+id="log_filename" 
+type="char*256" 
+category="io" 
+group="io_nml" >
+Root name for log file.
+
+Default: Set by CESM scripts.
+</entry>
+
+<entry 
+id="luse_pointer_files" 
+type="logical" 
+category="io" 
+group="io_nml" >
+Flag to use files to point to location of restarts.
+
+Default: '.true.'
+</entry>
+
+<entry 
+id="pointer_filename"
+type="char*256"
+category="io"
+group="io_nml" >
+Name of file that points to location of restarts.
+
+Default: rpointer.ocn.* (found in $RUNDIR)
+</entry>
+
+<entry 
+id="luse_nf_64bit_offset" 
+type="logical" 
+category="io" 
+group="io_nml" >
+Flag to use 64-bit offset in netCDF files.
+
+Default: '.true.'
+</entry>
+
+
+<!-- - - - - - - - - - - - - - - - - - -->
+<!-- Group: time_manager_nml         - -->
+<!-- - - - - - - - - - - - - - - - - - -->
+
+<entry 
+id="runid"
+type="char*256"
+category="timemgr"
+group="time_manager_nml" >
+An identifier for the run.
+
+Default: $CASENAME
+</entry>
+
+<entry 
+id="time_mix_opt"
+type="char*256"
+category="timemgr"
+group="time_manager_nml"
+valid_values="matsuno,avg,avgbb,avgfit,none" >
+Option for time mixing (Matsuno or averaging).
+
+Valid Values: 'matsuno', 'avg', 'avgbb', 'avgfit', 'none'
+Default: 'avgfit' 
+</entry>
+
+<entry 
+id="time_mix_freq"
+type="integer" 
+category="timemgr"
+group="time_manager_nml" >
+Frequency of mixing.
+
+Default: 17
+</entry>
+
+<entry 
+id="impcor"
+type="logical"
+category="timemgr"
+group="time_manager_nml" >
+Flag for implicit treatment of Coriolis terms.
+
+Default: .true.
+</entry>
+
+<entry 
+id="laccel"
+type="logical"
+category="timemgr"
+group="time_manager_nml" >
+Flag for acceleration.
+
+Default: .false.
+</entry>
+
+<entry 
+id="accel_file"
+type="char*256"
+category="timemgr"
+group="time_manager_nml" >
+File containing acceleration factors.
+
+Default: Set by CESM scripts based on ocean grid
+</entry>
+
+<entry 
+id="dtuxcel"
+type="real"
+category="timemgr"
+group="time_manager_nml" >
+Factor to multiply MOMENTUM timestep.
+
+Default: 1.0
+</entry>
+
+<entry 
+id="iyear0"            
+type="integer"
+category="timemgr"
+group="time_manager_nml" >
+Initial start date and time (year).
+
+Default: 1
+</entry>
+
+<entry 
+id="imonth0"      
+type="integer"
+category="timemgr"
+group="time_manager_nml" >
+Initial start date and time (month).
+
+Default: 1
+</entry>
+
+<entry 
+id="iday0"       
+type="integer"
+category="timemgr"
+group="time_manager_nml" >
+Initial start date and time (day).
+
+Default: 2
+</entry>
+
+<entry 
+id="ihour0"
+type="integer"
+category="timemgr"
+group="time_manager_nml" >
+Initial start date and time (hour).
+
+Default: 0
+</entry>
+
+<entry 
+id="iminute0"         
+type="integer"
+category="timemgr"
+group="time_manager_nml" >
+Initial start date and time (minute).
+
+Default: 0
+</entry>
+
+<entry 
+id="isecond0"        
+type="integer"
+category="timemgr"
+group="time_manager_nml" >
+Initial start date and time (second).
+
+Default: 0
+</entry>
+
+<entry 
+id="dt_option"
+type="char*256" 
+category="timemgr"
+group="time_manager_nml"
+valid_values="auto_dt,steps_per_year,steps_per_day,seconds,hours" >
+Method to determine tracer timestep size.
+
+Valid Values: 'auto_dt', 'steps_per_year', 'steps_per_day', 'seconds', 'hours'
+Default: 'steps_per_day'
+</entry>
+
+<entry 
+id="dt_count"
+type="integer" 
+category="timemgr"
+group="time_manager_nml" >
+Input count to determine tracer timestep.
+
+Default: Set by CESM scripts based on ocean grid
+</entry>
+
+<entry 
+id="idtb"
+type="integer"
+category="timemgr"
+group="time_manager_nml" >
+Barotropic timestep, in seconds.
+
+Default: Set by CESM scripts based on LICOM ocean mode
+</entry>
+
+<entry 
+id="idtc"
+type="integer"
+category="timemgr"
+group="time_manager_nml" >
+Baroclinic timestep, in seconds.
+
+Default: Set by CESM scripts based on LICOM ocean mode
+</entry>
+
+<entry 
+id="idts"
+type="integer"
+category="timemgr"
+group="time_manager_nml" >
+Temperature salinity timestep, in seconds.
+
+Default: Set by CESM scripts based on LICOM ocean mode
+</entry>
+
+<entry 
+id="stop_option"
+type="char*256"
+category="timemgr"
+group="time_manager_nml"
+valid_values="never,eoy,eom,eod,nyear,nyears,nmonth,nmonths,nday,ndays,nstep,nsteps,date" >
+Specify how to determine stopping time.
+
+Valid Values: 'never', 'eoy', 'eom', 'eod', 'nyear', 'nyears', 'nmonth', 'nmonths', 'nday', 'ndays', 'nstep', 'nsteps', 'date'
+Default: 'nyear'
+</entry>
+
+<entry 
+id="stop_count"
+type="integer"
+category="timemgr"
+group="time_manager_nml" >
+Number of stop_option intervals before stop OR date (yyyymmdd) at which model stops.
+
+Default: 1000
+</entry>
+
+<entry 
+id="date_separator"
+type="char*1"
+category="timemgr"
+group="time_manager_nml" >
+Character to separate yyyy-mm-dd.
+
+Default: "-"
+</entry>
+
+<entry 
+id="allow_leapyear"
+type="logical"
+category="timemgr"
+group="time_manager_nml" >
+Flag to allow leap years.
+
+Default: .false.
+</entry>
+
+<entry 
+id="fit_freq"
+type="integer"
+category="timemgr"
+group="time_manager_nml" >
+Number of intervals / days into which full and half timesteps must exactly "fit".
+
+Default: 1
+</entry>
+
+<!-- - - - - - - - - - - - - - - - - - -->
+<!-- Group: grid_nml                 - -->
+<!-- - - - - - - - - - - - - - - - - - -->
+
+<entry 
+id="horiz_grid_opt"
+type="char*256"
+category="grid"
+group="grid_nml"
+valid_values="internal,file" >
+Horizontal grid option.
+
+Valid Values: 'internal', 'file'
+Default: 'file'
+</entry>
+
+<entry 
+id="vert_grid_opt"
+type="char*256"
+category="grid"
+group="grid_nml"
+valid_values="internal,file" >
+Vertical grid option.
+
+Valid Values: 'internal', 'file'
+Default: 'file'
+</entry>
+
+<entry 
+id="topography_opt"
+type="char*256"
+category="grid"
+group="grid_nml"
+valid_values="internal,bathymetry,file" >
+Topography (KMT) option.
+
+Valid Values: 'internal', 'bathymetry', 'file'
+Default: 'file'
+</entry>
+
+<entry 
+id="horiz_grid_file"
+type="char*256"
+category="grid"
+group="grid_nml"
+input_pathname="abs" >
+Input file for reading horizontal grid info.
+
+Default: Set by CESM scripts based on ocean grid
+</entry>
+
+<entry 
+id="vert_grid_file"
+type="char*256"
+category="grid"
+group="grid_nml" 
+input_pathname="abs" >
+Input file for reading vertical grid info.
+
+Default: Set by CESM scripts based on ocean grid
+</entry>
+
+<entry 
+id="topography_file"
+type="char*256"
+category="grid"
+group="grid_nml"
+input_pathname="abs" >
+Input file for reading topography info.
+
+Default: Set by CESM scripts based on ocean grid
+</entry>
+
+<entry 
+id="basin_grid_file"
+type="char*256"
+category="grid"
+group="grid_nml"
+input_pathname="abs" >
+Input file for reading basin info.
+
+Default: Set by LICOM scripts based on ocean grid
+</entry>
+
+<entry 
+id="topography_outfile"
+type="char*256"
+category="grid"
+group="grid_nml" >
+Output file for writing horizontal grid info.
+
+Default: '$RUNDIR/$CASENAME.pop.h.topography_bathymetry.ieeer8'
+</entry>
+
+<entry 
+id="bathymetry_file"
+type="char*256"
+category="grid"
+group="grid_nml" >
+Input file for reading bathymetry info.
+
+Default: 'unknown_bathymetry'
+</entry>
+
+<entry 
+id="n_topo_smooth"
+type="integer"
+category="grid"
+group="grid_nml" >
+Number of topo smoothing passes.
+
+Default: 0
+</entry>
+
+<entry 
+id="flat_bottom"
+type="logical"
+category="grid"
+group="grid_nml" >
+Flag for flat bottom topography.
+
+Default: .false.
+</entry>
+
+<entry 
+id="lremove_points"
+type="logical"
+category="grid"
+group="grid_nml" >
+Flag for removing isolated points.
+
+Default: .false.
+</entry>
+
+<entry 
+id="region_mask_file"
+type="char*256"
+category="grid"
+group="grid_nml"
+input_pathname="abs" >
+Input file for reading region mask.
+
+Default: Set by CESM scripts based on ocean grid
+</entry>
+
+<entry 
+id="region_info_file"
+type="char*256"
+category="grid"
+group="grid_nml" >
+Input file with region identification info.
+
+Default: Set by CESM scripts based on ocean grid
+</entry>
+
+<entry 
+id="sfc_layer_opt"
+type="char*256"
+category="grid"
+group="grid_nml"
+valid_values="varthick,rigid,oldfree" >
+Choice for surface layer type.
+
+Valid Values: 'varthick', 'rigid', 'oldfree'
+Default: 'varthick'
+</entry>
+
+<entry 
+id="partial_bottom_cells"
+type="logical"
+category="grid"
+group="grid_nml" >
+Flag for partial bottom cells.
+
+Default: .false.
+</entry>
+
+<entry 
+id="bottom_cell_file"
+type="char*256"
+category="grid"
+group="grid_nml"
+input_pathname="abs" >
+Input file for thickness of partial bottom cells.
+
+Default: 'unknown_bottom_cell'
+</entry>
+
+<entry 
+id="kmt_kmin"
+type="integer"
+category="grid"
+group="grid_nml" >
+Minimum allowed non-zero KMT value.
+
+Default: 3
+</entry>
+
+<entry 
+id="l1Ddyn"
+type="logical"
+category="grid"
+group="grid_nml" >
+Flag to run POP in 1D dynamics mode (recommend only using with T62_g37 resolution)
+
+Default: .false.
+</entry>
+
+<!-- - - - - - - - - - - - - - - - - - -->
+<!-- Group: init_ts_option           - -->
+<!-- - - - - - - - - - - - - - - - - - -->
+
+<entry 
+id="init_ts_option"
+type="char*256"
+category="init_ts"
+group="init_ts_nml" >
+Option for initializing temperature and salinity.
+
+Default: 'ccsm_RUNTYPE'
+</entry>
+
+<entry 
+id="init_ts_file"
+type="char*256"
+category="init_ts"
+group="init_ts_nml"
+input_pathname="abs" >
+Input file for initial temperature and salinity.
+
+Default: Set by CESM scripts based on ocean grid
+</entry>
+
+<entry 
+id="init_ts_file_fmt"
+type="char*256"
+category="init_ts"
+group="init_ts_nml"
+valid_values="bin,nc" >
+init_ts_file format (binary or netCDF).
+
+Valid Values: 'bin', 'nc'
+Default: 'bin'
+</entry>
+
+<entry 
+id="init_ts_suboption"
+type="char*256"
+category="init_ts"
+group="init_ts_nml" >
+Suboption for initializing temperature and salinity.
+
+Default: 'null'
+</entry>
+
+<entry 
+id="init_ts_outfile"
+type="char*256"
+category="init_ts"
+group="init_ts_nml" >
+Output file for writing temperature and salinity.
+
+Default: '$RUNDIR/$CASENAME.pop.h.ts_ic'
+</entry>
+
+<entry 
+id="init_ts_outfile_fmt"
+type="char*256"
+category="init_ts"
+group="init_ts_nml"
+valid_values="bin,nc" >
+init_ts_outfile format (binary or netCDF).
+
+Valid Values: 'bin', 'nc'
+Default: 'nc'
+</entry>
+
+<!-- - - - - - - - - - - - - - - - - - -->
+<!-- Group: bsf_diagnostic_nml       - -->
+<!-- - - - - - - - - - - - - - - - - - -->
+
+<entry 
+id="ldiag_bsf"
+type="logical"
+category="diag"
+group="bsf_diagnostic_nml" >
+Flag for barotropic stream function diagnostics.
+
+Default: .true.
+</entry>
+
+<!-- - - - - - - - - - - - - - - - - - -->
+<!-- Group: restart_nml              - -->
+<!-- - - - - - - - - - - - - - - - - - -->
+
+<entry 
+id="restart_freq_opt"
+type="char*256"
+category="restart"
+group="restart_nml"
+valid_values="never,nyear,nmonth,nday,nhour,nsecond,nstep" >
+Units of restart_freq (restart frequency).
+
+Valid Values: 'never', 'nyear', 'nmonth', 'nday', 'nhour', 'nsecond', 'nstep'
+Default: 'nyear' 
+</entry>
+
+<entry 
+id="restart_freq"
+type="integer"
+category="restart"
+group="restart_nml" >
+Restart frequency.
+
+Default: 100000
+</entry>
+
+<entry 
+id="restart_outfile"
+type="char*256"
+category="restart"
+group="restart_nml" >
+Restart output filename root.
+
+Default: '$RUNDIR/$CASENAME.licom.r'
+</entry>
+
+<entry 
+id="restart_fmt"
+type="char*256"
+category="restart"
+group="restart_nml"
+valid_values="bin,nc" >
+restart_outfile format (binary or netCDF).
+
+Valid Values: 'bin', 'nc'
+Default: 'nc'
+</entry>
+
+<entry 
+id="leven_odd_on"
+type="logical"
+category="restart"
+group="restart_nml" >
+Flag to turn even_odd restarts on.
+
+Default: .false. 
+</entry>
+
+<entry 
+id="even_odd_freq"
+type="integer"
+category="restart"
+group="restart_nml" >
+Frequency to write even/odd restart files (units = nstep).
+
+Default: 100000
+</entry>
+
+<entry 
+id="pressure_correction"
+type="logical"
+category="restart"
+group="restart_nml" >
+Flag to fix pressure for exact restart.
+
+Default: .false.
+</entry>
+
+<entry 
+id="restart_start_opt"
+type="char*256"
+category="restart"
+group="restart_nml"
+valid_values="nstep,nday,nyear,date" >
+Units of restart_start (when to begin writing regular restart files).
+
+Default: 'nstep'
+</entry>
+
+<entry 
+id="restart_start"
+type="integer"
+category="restart"
+group="restart_nml" >
+Wait prior to beginning to output restart files.
+
+Default:  0
+</entry>
+
+<!-- - - - - - - - - - - - - - - - - - -->
+<!-- Group: history_nml              - -->
+<!-- - - - - - - - - - - - - - - - - - -->
+
+<entry 
+id="history_freq_opt"
+type="char*256"
+category="history"
+group="history_nml"
+valid_values="never,nyear,nmonth,nday,nhour,nsecond,nstep" >
+Units of history_freq (frequency of writing history files).
+
+Valid Values: 'never', 'nyear', 'nmonth', 'nday', 'nhour', 'nsecond', 'nstep'
+Default: 'never'
+</entry>
+
+<entry 
+id="history_freq"
+type="integer"
+category="history"
+group="history_nml" >
+Frequency of writing history files.
+
+Default: 1
+</entry>
+
+<entry 
+id="history_outfile"
+type="char*256"
+category="history"
+group="history_nml" >
+Root filename for history files.
+
+Default: '$CASENAME.licom.hs'
+</entry>
+
+<entry 
+id="history_contents"
+type="char*256"
+category="history"
+group="history_nml" >
+Filename for choosing fields for output in history file.
+
+Default: Set by CESM scripts based on ocean grid
+</entry>
+
+<entry 
+id="history_fmt"
+type="char*256"
+category="history"
+group="history_nml"
+valid_values="bin,nc" >
+history_outfile format (binary or netCDF).
+
+Valid Values: 'bin', 'nc'
+Default: 'nc'
+</entry>
+
+<!-- - - - - - - - - - - - - - - - - - -->
+<!-- Group: tidal_nml                - -->
+<!-- - - - - - - - - - - - - - - - - - -->
+
+<entry 
+id="ltidal_mixing"
+type="logical"
+category="tidal"
+group="tidal_nml" >
+Flag for tidal mixing.
+
+Default: .true.
+</entry>
+
+<entry 
+id="local_mixing_fraction"
+type="real"
+category="tidal"
+group="tidal_nml" >
+Fraction of energy available for mixing local to the generation region.
+
+Default: 0.33
+</entry>
+
+<entry 
+id="mixing_efficiency"
+type="real"
+category="tidal"
+group="tidal_nml" >
+Mixing efficiency.
+
+Default: 0.2
+</entry>
+
+<entry 
+id="vertical_decay_scale"
+type="real"
+category="tidal"
+group="tidal_nml" >
+Vertical decay scale for turbulence (cm)
+
+Default: 500.0e02
+</entry>
+
+<entry 
+id="tidal_energy_file"
+type="char*256"
+category="tidal"
+group="tidal_nml"
+input_pathname="abs" >
+Input file for reading tidal energy flux.
+
+Default: 'unknown_tidal_mixing'
+</entry>
+
+<entry 
+id="tidal_mix_max"
+type="real"
+category="tidal"
+group="tidal_nml" >
+Maximum for vertical diffusivity and viscosity (cm^2/s).
+
+Default: 100.0
+</entry>
+
+<entry 
+id="tidal_energy_file_fmt"
+type="char*256"
+category="tidal"
+group="tidal_nml"
+valid_values="bin,nc" >
+tidal_energy_file format (binary or netCDF).
+
+Valid Values: 'bin', 'nc'
+Default: 'bin'
+</entry>
+
+<!-- - - - - - - - - - - - - - - - - - -->
+<!-- Group: advect_nml               - -->
+<!-- - - - - - - - - - - - - - - - - - -->
+
+<entry 
+id="tadvect_ctype"
+type="char*256"
+category="advect"
+group="advect_nml"
+valid_values="centered,upwind3,lw_lim" >
+Tracer advection choice.
+
+Valid Values: 'center','upwind','lw_lim'
+Default: 'upwind3'
+</entry>
+
+<entry 
+id="adv_momentum"
+type="char*256"
+category="advect"
+group="advect_nml" >
+
+Default: Set by LICOM scripts, "centered"
+</entry>
+
+<entry 
+id="adv_tracer"
+type="char*256"
+category="advect"
+group="advect_nml" >
+
+Default: Set by LICOM scripts, "tspas"
+</entry>
+
+<!-- - - - - - - - - - - - - - - - - - -->
+<!-- Group: hmix_nml                 - -->
+<!-- - - - - - - - - - - - - - - - - - -->
+
+<entry 
+id="hmix_momentum_choice"
+type="char*256"
+category="hmix"
+group="hmix_nml"
+valid_values="del2,del4,anis,gent" >
+Type of horizontal momentum mixing.
+
+Valid Values: 'del2', 'del4', 'anis', 'gent'
+Default: 'anis'
+</entry>
+
+<entry 
+id="hmix_tracer_choice"
+type="char*256"
+category="hmix"
+group="hmix_nml"
+valid_values="del2,del4,gent" >
+Type of horizontal tracer mixing.
+
+Valid Values: 'del2','del4','gent'
+Default: 'gent'
+</entry>
+
+<entry 
+id="lsubmesoscale_mixing"
+type="logical"
+category="hmix"
+group="hmix_nml" >
+Flag for submesoscale mixing.
+
+Default: .true.
+</entry>
+
+<!-- - - - - - - - - - - - - - - - - - -->
+<!-- Group: hmix_del2u_nml           - -->
+<!-- - - - - - - - - - - - - - - - - - -->
+
+<entry 
+id="lauto_hmix&hmix_del2u_nml"
+type="logical"
+category="hmix"
+group="derived" >
+Flag to internally compute mixing coefficient.
+
+Default: .false.
+Note: You must specify both the variable name and namelist name if you change this variable in user_nl_licom!
+</entry>
+
+<entry 
+id="lvariable_hmix&hmix_del2u_nml"
+type="logical"
+category="hmix"
+group="derived" >
+Flag to enable spatially-varying mixing.
+
+Default: .false. 
+Note: You must specify both the variable name and namelist name if you change this variable in user_nl_licom!
+</entry>
+
+<entry 
+id="am&hmix_del2u_nml"
+type="real"
+category="hmix"
+group="derived" >
+Horizontal momentum mixing coefficient.
+
+Default: 0.5e8
+Note: You must specify both the variable name and namelist name if you change this variable in user_nl_licom!
+</entry>
+
+<!-- - - - - - - - - - - - - - - - - - -->
+<!-- Group: hmix_del2t_nml           - -->
+<!-- - - - - - - - - - - - - - - - - - -->
+
+<entry 
+id="lauto_hmix&hmix_del2t_nml"
+type="logical"
+category="hmix"
+group="derived" >
+Flag to internally compute mixing coefficient.
+
+Default: .false.
+Note: You must specify both the variable name and namelist name if you change this variable in user_nl_licom!
+</entry>
+
+<entry 
+id="lvariable_hmix&hmix_del2t_nml"
+type="logical"
+category="hmix"
+group="derived" >
+Flag to enable spatially-varying mixing.
+
+Default: .false.
+Note: You must specify both the variable name and namelist name if you change this variable in user_nl_licom!
+</entry>
+
+<entry 
+id="ah&hmix_del2t_nml"
+type="real"
+category="hmix"
+group="derived" >
+Horizontal tracer mixing coefficient.
+
+Default: 0.6e7
+Note: You must specify both the variable name and namelist name if you change this variable in user_nl_licom!
+</entry>
+
+<!-- - - - - - - - - - - - - - - - - - -->
+<!-- Group: hmix_del4u_nml           - -->
+<!-- - - - - - - - - - - - - - - - - - -->
+
+<entry 
+id="lauto_hmix&hmix_del4u_nml"
+type="logical"
+category="hmix"
+group="derived" >
+Flag to internally compute mixing coefficient.
+
+Default: .false. 
+Note: You must specify both the variable name and namelist name if you change this variable in user_nl_licom!
+</entry>
+
+<entry 
+id="lvariable_hmix&hmix_del4u_nml"
+type="logical"
+category="hmix"
+group="derived" >
+Flag to enable spatially-varying mixing.
+
+Default: .false.
+Note: You must specify both the variable name and namelist name if you change this variable in user_nl_licom!
+</entry>
+
+<entry 
+id="am&hmix_del4u_nml"
+type="real"
+category="hmix"
+group="derived" >
+Horizontal momentum mixing coefficient.
+
+Default: -0.6e20
+Note: You must specify both the variable name and namelist name if you change this variable in user_nl_licom!
+</entry>
+
+<!-- - - - - - - - - - - - - - - - - - -->
+<!-- Group: hmix_del4t_nml           - -->
+<!-- - - - - - - - - - - - - - - - - - -->
+
+<entry 
+id="lauto_hmix&hmix_del4t_nml"
+type="logical"
+category="hmix"
+group="derived" >
+Flag to internally compute mixing coefficient.
+
+Default: .false.
+Note: You must specify both the variable name and namelist name if you change this variable in user_nl_licom!
+</entry>
+
+<entry 
+id="lvariable_hmix&hmix_del4t_nml"
+type="logical"
+category="hmix"
+group="derived" >
+Flag to enable spatially-varying mixing.
+
+Default: .false.
+Note: You must specify both the variable name and namelist name if you change this variable in user_nl_licom!
+</entry>
+
+<entry 
+id="ah&hmix_del4t_nml"
+type="real"
+category="hmix"
+group="derived" >
+Horizontal tracer mixing coefficient.
+
+Default: -0.2e20
+Note: You must specify both the variable name and namelist name if you change this variable in user_nl_licom!
+</entry>
+
+<!-- - - - - - - - - - - - - - - - - - -->
+<!-- Group: gm90_nml                - -->
+<!-- - - - - - - - - - - - - - - - - - -->
+
+<entry 
+id="config_use_gm90"
+type="logical"
+category="gm90"
+group="gm90_nml" >
+Flag to use the Gent-McWilliams eddy transport parameterization
+and isopycnal diffusion.
+
+Default: Set by LICOM scripts, lt1v1 is .true., lt0.1v1 is .false.
+</entry>
+
+<entry 
+id="config_use_ldd97"
+type="logical"
+category="gm90"
+group="gm90_nml" >
+Flag to use LDD97 .
+
+Default: Set by LICOM scripts, lt1v1 is .true., lt0.1v1 is .false.
+</entry>
+
+<entry 
+id="gm90_type_bf"
+type="logical"
+category="gm90"
+group="gm90_nml" >
+Flag to use ISO_TYPE_BF .
+
+Default: Set by LICOM scripts, lt1v1 is .true., lt0.1v1 is .false.
+</entry>
+
+<!-- <entry 
+id="nrpl"
+type="integer"
+category="gm90"
+group="gm90_nml" >
+Number of reference presure levels used in isopycnal.
+
+Default: Set by LICOM scripts
+</entry> -->
+
+<entry 
+id="slmxr"
+type="integer"
+category="gm90"
+group="gm90_nml" >
+Reciprocal of maximum slope of isopycnals allowed in mixing scheme to prevent excessively large vertical mixing 
+that could create numerical instabilities.
+
+Default: Set by LICOM scripts
+</entry>
+
+
+<!-- - - - - - - - - - - - - - - - - - -->
+<!-- Group: sss_nml                - -->
+<!-- - - - - - - - - - - - - - - - - - -->
+
+<entry 
+id="lsss_restoring"
+type="logical"
+category="sss"
+group="sss_nml" >
+Flag for initial Sea surface salinity.
+
+Default: .true.
+</entry>
+
+<entry 
+id="sss_file"
+type="char*256"
+category="sss"
+group="sss_nml" 
+input_pathname="abs" >
+Input file for initial Sea surface salinity.
+
+Default: Set by LICOM scripts
+</entry>
+
+<!-- - - - - - - - - - - - - - - - - - -->
+<!-- Group: state_nml                - -->
+<!-- - - - - - - - - - - - - - - - - - -->
+
+<!--
+<entry 
+id="state_choice"
+type="char*256"
+category="state"
+group="state_nml"
+valid_values="jmcd,mwjf,poly,line" >
+Which equation of state to use.
+
+Valid Values: 'jmcd', 'mwjf', 'poly', 'line'
+Default: 'poly'
+</entry>
+-->
+
+<entry 
+id="state_file"
+type="char*256"
+category="state"
+group="state_nml" 
+input_pathname="abs" >
+File containing polynomial equation of state coefficients.
+
+Default: 'internal'
+</entry>
+
+<!--
+<entry 
+id="state_range_opt"
+type="char*256"
+category="state"
+group="state_nml"
+valid_values="ignore,check,enforce" >
+Option for checking for valid temperature and salinity ranges.
+
+Valid Values: 'ignore', 'check', 'enforce'
+Default: 'enforce'
+</entry>
+
+<entry 
+id="state_range_freq"
+type="integer"
+category="state"
+group="state_nml" >
+Frequency (in steps) for checking validity of temperature and salinity ranges.
+
+Default: 100000
+</entry>
+-->
+
+<!-- - - - - - - - - - - - - - - - - - -->
+<!-- Group: baroclinic_nml           - -->
+<!-- - - - - - - - - - - - - - - - - - -->
+
+<entry 
+id="reset_to_freezing"
+type="logical"
+category="baroclinic"
+group="baroclinic_nml" >
+Flag to prevent very cold water.
+
+Default: .false.
+</entry>
+
+<!-- - - - - - - - - - - - - - - - - - -->
+<!-- Group: ice_nml                  - -->
+<!-- - - - - - - - - - - - - - - - - - -->
+
+<entry 
+id="kmxice"
+type="integer"
+category="ice"
+group="ice_nml" >
+Lowest level from which to integrate ice formation.
+
+Default: 1
+</entry>
+
+<entry 
+id="ice_freq_opt"
+type="char*256"
+category="ice"
+group="ice_nml"
+valid_values="never,coupled,nyear,nmonth,nday,nhour,nsecond,nstep" >
+Option for frequency of computing ice.
+
+Valid Values: 'never', 'coupled', 'nyear', 'nmonth', 'nday', 'nhour', 'nsecond', 'nstep'
+Default: 'coupled'
+</entry>
+
+<entry 
+id="ice_freq"
+type="integer"
+category="ice"
+group="ice_nml" >
+Frequency with which to compute ice (units of ice_freq_opt).
+
+Default:  100000
+</entry>
+
+<entry 
+id="lactive_ice"
+type="logical"
+category="ice"
+group="ice_nml" >
+Flag for whether POP is coupled to an active ice model.
+
+Default: Depends on $OCN_ICE_FORCING ("inactive" => .false.)
+</entry>
+
+<!-- - - - - - - - - - - - - - - - - - -->
+<!-- Group: coupled_nml              - -->
+<!-- - - - - - - - - - - - - - - - - - -->
+
+<entry 
+id="coupled_freq_opt"
+type="char*256"
+category="coupled"
+group="coupled_nml"
+valid_values="nyear,nmonth,nday,nhour,nsecond,nstep,never" >
+Units of coupled_freq (frequency POP is coupled to atmosphere / sea ice models via CESM flux coupler).
+
+Valid Values: 'nyear', 'nmonth', 'nday', 'nhour', 'nsecond', 'nstep', 'never'
+Default: 'nhour'
+</entry>
+
+<entry 
+id="coupled_freq"
+type="integer"
+category="coupled"
+group="coupled_nml" >
+Frequency POP is coupled to atmosphere / sea ice models via CESM flux coupler (units given by coupled_freq_opt).
+
+Default:  24
+</entry>
+
+<entry 
+id="qsw_distrb_opt"
+type="char*256"
+category="coupled"
+group="coupled_nml"
+valid_values="const,12hr,cosz" >
+Option for distributing net shortwave heat flux over a coupling interval (all options preserve time-integrated flux).
+
+Valid Values: 'const','12hr','cosz'
+Default: 'cosz'
+</entry>
+
+<!-- - - - - - - - - - - - - - - - - - -->
+<!-- Group: sw_absorption_nml        - -->
+<!-- - - - - - - - - - - - - - - - - - -->
+
+<entry 
+id="lsw_absorption"
+type="logical"
+category="swabs"
+group="sw_absorption_nml" >
+Flag for whether short-wave absorption is enabled.
+
+Default: .true.
+</entry>
+
+<entry 
+id="sw_absorption_type"
+type="char*256"
+category="swabs"
+group="sw_absorption_nml" 
+valid_values="top-layer,jerlov,chlorophyll" >
+Short-wave absorption type.
+
+Valid Values: 'top-layer', 'jerlov', 'chlorophyll'
+Default: 'chlorophyll'
+</entry>
+
+<entry 
+id="chl_option"
+type="char*256"
+category="swabs"
+group="sw_absorption_nml"
+valid_values="file,model" >
+Chlorophyll option.
+
+Valid Values: 'file', 'model'
+Default: auto-filled by CESM scripts
+</entry>
+
+<entry 
+id="chl_filename"
+type="char*256"
+category="swabs"
+group="sw_absorption_nml"
+input_pathname="abs" >
+Chlorophyll input filename.
+
+Default: auto-filled by CESM scripts
+</entry>
+
+<entry 
+id="chl_file_fmt"
+type="char*256"
+category="swabs"
+group="sw_absorption_nml"
+valid_values="bin,nc" >
+chl_filename format (binary or netCDF).
+
+Valid Values: 'bin', 'nc'
+Default: 'bin'
+</entry>
+
+<entry 
+id="jerlov_water_type"
+type="integer"
+category="swabs"
+group="sw_absorption_nml"
+valid_values="1,2,3,4,5" >
+Jerlov water type.
+
+Valid Values: 1-5 (correspond to I, IA, IB, II, and III, respectively)
+Default: 1
+</entry>
+
+<!-- - - - - - - - - - - - - - - - - - -->
+<!-- Group: context_nml              - -->
+<!-- - - - - - - - - - - - - - - - - - -->
+
+<entry 
+id="lcoupled"
+type="logical"
+category="context"
+group="context_nml" >
+Flag for whether POP is coupled to another system.
+
+Default: .true.
+</entry>
+
+<entry 
+id="lccsm"
+type="logical"
+category="context"
+group="context_nml" >
+Flag to run licom in the CESM context.
+
+Default: .true.
+</entry>
+
+<entry 
+id="b4b_flag"
+type="logical"
+category="context"
+group="context_nml" >
+Flag to run POP in bit-for-bit mode.
+
+Default: .false.
+</entry>
+
+<entry 
+id="lccsm_control_compatible"
+type="logical"
+category="context"
+group="context_nml" >
+Flag to run POP with code that is bit-for-bit with the ccsm4 control run. (According to source notes, this option should have been removed in ccsm4_0_1!).
+
+Default: .false.
+</entry>
+
+<!-- - - - - - - - - - - - - - - - - - -->
+<!-- Group: tavg_nml                 - -->
+<!-- - - - - - - - - - - - - - - - - - -->
+
+<entry 
+id="n_tavg_streams"
+type="integer"
+category="tavg"
+group="tavg_nml" >
+Default: 3
+</entry>
+
+<entry 
+id="ltavg_ignore_extra_streams"
+type="logical"
+category="tavg"
+group="tavg_nml" >
+Default: .false.
+</entry>
+
+<entry 
+id="ltavg_streams_index_present"
+type="logical"
+category="tavg"
+group="tavg_nml" >
+Default: .true.
+</entry>
+
+<entry 
+id="tavg_freq_opt"
+type="char*256(9)"
+category="tavg"
+group="tavg_nml" >
+Default: 'nmonth' 'nday' 'once'
+</entry>
+
+<entry 
+id="tavg_freq"
+type="integer(9)"
+category="tavg"
+group="tavg_nml" >
+Default: 1 1 1
+</entry>
+
+<entry 
+id="tavg_file_freq_opt"
+type="char*256(9)"
+category="tavg"
+group="tavg_nml" >
+Default: 'nmonth' 'nmonth' 'once'
+</entry>
+
+<entry 
+id="tavg_file_freq"
+type="integer(9)"
+category="tavg"
+group="tavg_nml" >
+Default: 1 1 1
+</entry>
+
+<entry 
+id="tavg_stream_filestrings"
+type="char*256(9)"
+category="tavg"
+group="tavg_nml" >
+Default: 'nmonth1' 'nday1' 'once'
+</entry>
+
+<entry 
+id="tavg_start_opt"
+type="char*256(9)"
+category="tavg"
+group="tavg_nml" >
+Default: 'nstep' 'nstep' 'nstep'
+</entry>
+
+<entry 
+id="tavg_start"
+type="integer(9)"
+category="tavg"
+group="tavg_nml" >
+Default: 0 0 0
+</entry>
+
+<entry 
+id="tavg_fmt_in"
+type="char*256(9)"
+category="tavg"
+group="tavg_nml" >
+Default: 'nc' 'nc' 'nc'
+</entry>
+
+<entry 
+id="tavg_fmt_out"
+type="char*256(9)"
+category="tavg"
+group="tavg_nml" >
+Default: 'nc' 'nc' 'nc'
+</entry>
+
+<entry 
+id="tavg_contents"
+type="char*256"
+category="tavg"
+group="tavg_nml" >
+Default: ' '
+</entry>
+
+<entry 
+id="ltavg_nino_diags_requested"
+type="logical"
+category="tavg"
+group="tavg_nml" >
+Default: .true.
+</entry>
+
+<entry 
+id="tavg_infile"
+type="char*256"
+category="tavg"
+group="tavg_nml" >
+Default: ' ' 
+</entry>
+
+<entry 
+id="tavg_outfile"
+type="char*256"
+category="tavg"
+group="tavg_nml" >
+Default: ' ' 
+</entry>
+
+<entry 
+id="ltavg_has_offset_date"
+type="logical(9)"
+category="tavg"
+group="tavg_nml" >
+Default: .false. .false. .false.
+</entry>
+
+<entry 
+id="tavg_offset_years"
+type="integer(9)"
+category="tavg"
+group="tavg_nml" >
+Default: 1 1 1
+</entry>
+
+<entry 
+id="tavg_offset_months"
+type="integer(9)"
+category="tavg"
+group="tavg_nml" >
+Default: 1 1 1
+</entry>
+
+<entry 
+id="tavg_offset_days"
+type="integer(9)"
+category="tavg"
+group="tavg_nml" >
+Default: 2 2 2
+</entry>
+
+<entry 
+id="ltavg_one_time_header"
+type="logical(9)"
+category="tavg"
+group="tavg_nml" >
+Default: .false. .false. .false.
+</entry>
+
+<!-- - - - - - - - - - - - - - - - - - -->
+<!-- Group: iage_nml                 - -->
+<!-- - - - - - - - - - - - - - - - - - -->
+
+<entry 
+id="init_iage_option"
+type="char*256"
+category="passive_tracers"
+group="iage_nml"
+valid_values="ccsm_startup,zero,ccsm_startup_spunup,restart,ccsm_continue,ccsm_branch,ccsm_hybrid,file" >
+Option for initialization of iage.
+
+Valid Values: 'ccsm_startup', 'zero', 'ccsm_startup_spunup', 'restart', 'ccsm_continue', 'ccsm_branch', 'ccsm_hybrid', 'file'
+Default: 'ccsm_$RUNTYPE'
+</entry>
+
+<entry 
+id="init_iage_init_file"
+type="char*256" 
+category="passive_tracers"
+group="iage_nml"
+input_pathname="abs" >
+Filename for initializing iage (if init_iage_option='file').
+
+Default: 'same_as_TS'
+</entry>
+
+<entry 
+id="tracer_init_ext%mod_varname&iage_nml"
+type="dtype(1)%char*256" 
+category="passive_tracers"
+group="derived" >
+Default: 
+</entry>
+
+<entry 
+id="tracer_init_ext%filename&iage_nml"
+type="dtype(1)%char*256" 
+category="passive_tracers"
+group="derived"
+input_pathname="abs" >
+Default: 
+</entry>
+
+<entry 
+id="tracer_init_ext%file_varname&iage_nml"
+type="dtype(1)%char*256" 
+category="passive_tracers"
+group="derived" >
+Default: 
+</entry>
+
+<entry 
+id="tracer_init_ext%file_fmt&iage_nml"
+type="dtype(1)%char*256" 
+category="passive_tracers"
+group="derived" >
+Default: 
+</entry>
+
+<entry 
+id="tracer_init_ext%scale_factor&iage_nml"
+type="dtype(1)%real" 
+category="passive_tracers"
+group="derived" >
+Default: 
+</entry>
+
+<entry 
+id="tracer_init_ext%default_val&iage_nml"
+type="dtype(1)%real" 
+category="passive_tracers"
+group="derived" >
+Default: 
+</entry>
+
+<entry 
+id="init_iage_init_file_fmt"
+type="char*256" 
+category="passive_tracers"
+group="iage_nml"
+valid_values="bin,nc" >
+init_iage_init_file format (binary or netCDF).
+
+Valid Values: 'bin', 'nc'
+Default: 'bin'
+</entry>
+
+
+</namelist_definition>

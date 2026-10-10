@@ -1,0 +1,1636 @@
+#!/usr/bin/env perl
+#-----------------------------------------------------------------------------------------------
+#
+# build-namelist
+#
+# This script builds the namelists for the standalone CAM configuration of
+# CESM.
+#
+# build-namelist is designed to be used in conjuction with configure.
+# By default configure produces a config_cache.xml file that contains all
+# information needed at build time to procduce a CAM executable.
+# build-namelist reads this file to obtain information it needs to provide
+# default values that are consistent with the CAM executable.
+# For example, the grid resolution is obtained from the cache file and
+# used to determine appropriate defaults for boundary datasets
+# that are resolution dependent.
+#
+# build-namelist is called from <root>/cime_config/buildnml
+# buildnml is called by preview_namelists or before a job is run (directly
+# or from case.submit)
+# By default it will use the config_cache.xml file that was written by
+# configure to determine the build time properties of the executable,
+# and will write the files that contain the output namelists in that
+# same directory.  But if multiple runs are to made using the
+# same executable, successive invocations of build-namelist will overwrite
+# previously generated namelist files.
+#
+#------------------------------------------------------------------------------
+
+use strict;
+
+use Cwd;
+use English;
+use File::Basename;
+use Getopt::Long;
+use IO::File;
+use List::Util 'first';
+use FindBin qw($Bin);
+use lib "$Bin/perl5lib";
+# use Build::ChemNamelist qw(set_dep_lists set_aero_modes_info chem_has_species);
+use List::Util qw[min max];
+#------------------------------------------------------------------------------
+
+sub usage {
+    die <<EOF;
+SYNOPSIS
+     build-namelist [options]
+OPTIONS
+     -case "name"          Case identifier up to 32 characters
+     -config "filepath"    Read the given configuration cache file to determine the configuration
+                           of the CAM executable.  Default: "config_cache.xml".
+     -csmdata "dir"        Root directory of CCSM input data.
+                           Can also be set by using the CSMDATA environment variable.
+     -dir "directory"      Directory where output namelist files for each component will be
+                           written, i.e., atm_in, drv_in, ice_in, lnd_in, rof_in, and ocn_in.
+                           Default: current working directory.
+     -help [or -h]         Print usage to STDOUT.
+     -ignore_ic_date       Ignore the date of the initial condition files
+                           when determining the default.
+     -ignore_ic_year       Ignore just the year part of the date of the initial condition files
+                           when determining the default.
+     -infile "filepath"    Specify a file containing namelists to read values from.
+     -inputdata "filepath" Writes out a list containing pathnames for required input datasets in
+                           file specified.
+     -namelist "namelist"  Specify namelist settings directly on the commandline by supplying
+                           a string containing FORTRAN namelist syntax, e.g.,
+                            -namelist "&camexp nhtfrq=0,-24,-6 inithist='ENDOFRUN' /"
+     -ntasks <n>           Specify the number of MPI tasks being used by the run.  This is used
+                           to set a default decomposition for the FV dycore only (npr_yz).
+     -runtype "type"       Type of simulation (startup, continue, or branch)
+     -silent [-s]          Turns on silent mode - only fatal messages issued.
+     -start_ymd "ymd"      Start YMD from the case RUN_STARTDATE
+     -test                 Enable checking that input datasets exist on local filesystem.
+     -use_case             Specify a use case.  Default: present day climatology
+     -verbose [or -v]      Turn on verbose echoing of informational messages.
+     -version              Echo the CVS tag name used to check out this CAM distribution.
+
+Note: The precedence for setting the values of namelist variables is (highest to lowest):
+      1. namelist values set by specific command-line options, i.e., -case,
+         -runtype
+      2. values set on the command-line using the -namelist option,
+      3. values read from the file specified by -infile (from user_nl_cam)
+      4. values specified by the -use_case option,
+      5. values from the namelist defaults file.
+EOF
+}
+
+#-----------------------------------------------------------------------------------------------
+# Set the directory that contains the CAM configuration scripts.  If the command was
+# issued using a relative or absolute path, that path is in $ProgDir.  Otherwise assume the
+# command was issued from the current working directory.
+
+(my $ProgName = $0) =~ s!(.*)/!!;      # name of this script
+$ProgName = "CAM $ProgName";           # Since multiple components are now using a build-namelist
+                                       # utility add "CAM" qualifier to the name.  This helps when
+                                       # looking at error output from the whole CCSM system.
+my $ProgDir = $1;                      # name of directory containing this script -- may be a
+                                       # relative or absolute path, or null if the script is in
+                                       # the user's PATH
+my $cwd = getcwd();                    # current working directory
+my $cfgdir;                            # absolute pathname of directory that contains this script
+if ($ProgDir) {
+    $cfgdir = absolute_path($ProgDir);
+} else {
+    $cfgdir = $cwd;
+}
+
+# CAM root directory.
+my $cam_root = absolute_path("$cfgdir/../../..");
+
+my $cfg_cache = "config_cache.xml";           # Default name of configuration cache file
+my $outdirname = ".";                         # Default name of output directory name
+
+#-----------------------------------------------------------------------------------------------
+# Save commandline
+my $commandline = "$cfgdir/build-namelist @ARGV";
+
+#-----------------------------------------------------------------------------------------------
+
+# Process command-line options.
+
+my %opts = ( config         => $cfg_cache,
+             csmdata        => undef,
+             help           => 0,
+             dir            => $outdirname,
+             silent         => 0,
+             test           => 0,
+            );
+
+GetOptions(
+    "case=s"                    => \$opts{'case'},
+    "config=s"                  => \$opts{'config'},
+    "csmdata=s"                 => \$opts{'csmdata'},
+    "d|dir=s"                   => \$opts{'dir'},
+    "h|help"                    => \$opts{'help'},
+    "ignore_ic_date"            => \$opts{'ignore_ic_date'},
+    "ignore_ic_year"            => \$opts{'ignore_ic_year'},
+    "infile=s"                  => \$opts{'infile'},
+    "inputdata=s"               => \$opts{'inputdata'},
+    "namelist=s"                => \$opts{'namelist'},
+    "ntasks=s"                  => \$opts{'ntasks'},
+    "runtype=s"                 => \$opts{'runtype'},
+    "s|silent"                  => \$opts{'silent'},
+    "start_ymd=s"               => \$opts{'start_ymd'},
+    "test"                      => \$opts{'test'},
+    "uc|use_case=s"             => \$opts{'use_case'},
+    "v|verbose"                 => \$opts{'verbose'},
+    "version"                   => \$opts{'version'},
+)  or usage();
+
+# Give usage message.
+usage() if $opts{'help'};
+
+# Echo version info.
+if ($opts{'version'}) {
+    version($cfgdir);
+    exit;
+}
+
+# Check for unparsed arguments
+if (@ARGV) {
+    print "ERROR: unrecognized arguments: @ARGV\n";
+    usage();
+}
+
+# Define print levels:
+# 0 - only issue fatal error messages
+# 1 - only informs what files are created (default)
+# 2 - verbose
+my $print = 1;
+if ($opts{'silent'})  { $print = 0; }
+if ($opts{'verbose'}) { $print = 2; }
+my $eol = "\n";
+
+if ($print>=2) { print "Setting CAM configuration script directory to $cfgdir$eol"; }
+if ($print>=2) { print "build-namelist was invoked with the commandline:\n $commandline$eol"; }
+
+# Check that configuration cache file exists.
+(-f $opts{'config'})  or  die <<"EOF";
+** $ProgName - ERROR: Cannot find configuration cache file: \"$opts{'config'}\" **
+EOF
+
+if ($print>=2) { print "Using CAM configuration cache file $opts{'config'}$eol"; }
+
+# Check that the CCSM inputdata root directory has been specified.
+my $inputdata_rootdir = undef;
+if (defined($opts{'csmdata'})) {
+    $inputdata_rootdir = $opts{'csmdata'};
+}
+elsif (defined $ENV{'CSMDATA'}) {
+    $inputdata_rootdir = $ENV{'CSMDATA'};
+}
+else {
+    die "$ProgName - ERROR: CCSM inputdata root directory must be specified by either -csmdata argument\n" .
+        " or by the CSMDATA environment variable. :";
+}
+
+if ($print>=2) { print "CCSM inputdata root directory: $inputdata_rootdir$eol"; }
+
+# If the -test option is specified, then the inputdata root directory must be local or nfs mounted.
+if ($opts{'test'}) {
+(-d $inputdata_rootdir)  or  die <<"EOF";
+** $ProgName - ERROR: CCSM inputdata root is not a directory: \"$inputdata_rootdir\" **
+EOF
+}
+
+#-----------------------------------------------------------------------------------------------
+# Make sure we can find required perl modules, definition, and defaults files.
+# Look for them under the directory that contains the configure script.
+
+# The XML::Lite module is required to parse the XML files.
+(-f "$cfgdir/perl5lib/XML/Lite.pm")  or  die <<"EOF";
+** $ProgName - ERROR: Cannot find perl module \"XML/Lite.pm\" in directory \"$cfgdir/perl5lib\" **
+EOF
+
+# The Build::Config module provides utilities to access the configuration information
+# in the config_cache.xml file
+(-f "$cfgdir/perl5lib/Build/Config.pm")  or  die <<"EOF";
+** $ProgName - ERROR: Cannot find perl module \"Build/Config.pm\" in directory \"$cfgdir/perl5lib\" **
+EOF
+
+# The Build::NamelistDefinition module provides utilities to validate that the output
+# namelists are consistent with the namelist definition file
+(-f "$cfgdir/perl5lib/Build/NamelistDefinition.pm")  or  die <<"EOF";
+** $ProgName - ERROR: Cannot find perl module \"Build/NamelistDefinition.pm\" in directory \"$cfgdir/perl5lib\" **
+EOF
+
+# The Build::NamelistDefaults module provides a utility to obtain default values of namelist
+# variables based on finding a best fit with the attributes specified in the defaults file.
+(-f "$cfgdir/perl5lib/Build/NamelistDefaults.pm")  or  die <<"EOF";
+** $ProgName - ERROR: Cannot find perl module \"Build/NamelistDefaults.pm\" in directory \"$cfgdir/perl5lib\" **
+EOF
+
+# The Build::Namelist module provides utilities to parse input namelists, to query and modify
+# namelists, and to write output namelists.
+(-f "$cfgdir/perl5lib/Build/Namelist.pm")  or  die <<"EOF";
+** $ProgName - ERROR: Cannot find perl module \"Build/Namelist.pm\" in directory \"$cfgdir/perl5lib\" **
+EOF
+
+#-----------------------------------------------------------------------------------------------
+# Add $cfgdir/perl5lib to the list of paths that Perl searches for modules
+unshift @INC, "$cfgdir/perl5lib";
+require XML::Lite;
+require Build::Config;
+require Build::NamelistDefinition;
+require Build::NamelistDefaults;
+require Build::Namelist;
+
+#-----------------------------------------------------------------------------------------------
+# Create a configuration object from CAM's config_cache.xml file.  This object contains
+# all the build-time specifications of the CAM executable.
+my $cfg = Build::Config->new($opts{'config'});
+
+#-----------------------------------------------------------------------------------------------
+# Create a namelist definition object.  This object provides a method for verifying that the
+# output namelist variables are in the definition file, and are output in the correct
+# namelist groups.  Requires a namelist definition file...
+#
+# The namelist definition file contains entries for all namelist variables that
+# can be output by build-namelist.  The version of the file that is associate with a
+# fixed CAM tag is $cfgdir/namelist_files/namelist_definition.xml.  To aid developers
+# who make use of the source mods directory (via -usr_src arg to configure) we allow
+# the definition file to come from one of those directories.
+
+my $nl_definition_file;
+my @usr_src_dirs = split ',', $cfg->get('usr_src');
+if (@usr_src_dirs) {
+    foreach my $dir (@usr_src_dirs) {
+        if (-f "$dir/namelist_definition.xml") {
+            $nl_definition_file = "$dir/namelist_definition.xml";
+            last;
+        }
+    }
+}
+if (! defined $nl_definition_file) {
+    # default location of namelist definition file
+    $nl_definition_file = "$cfgdir/namelist_files/namelist_definition.xml";
+    (-f "$nl_definition_file")  or  die <<"EOF";
+    ** $ProgName - ERROR: Cannot find namelist definition file \"$nl_definition_file\" **
+EOF
+}
+
+if ($print>=2) { print "Using namelist definition file $nl_definition_file$eol"; }
+
+my $definition = Build::NamelistDefinition->new($nl_definition_file);
+
+#-----------------------------------------------------------------------------------------------
+# Create a namelist defaults object.  This object provides default values for variables
+# contained in the input defaults file.  The configuration object provides attribute
+# values that are relevent for the CAM executable for which the namelist is being produced.
+# These attributes are used along with optional user specified attributes to find the
+# best match when looking for default values.
+#
+# The namelist defaults file contains default values for all required namelist variables.
+# Analogously to the definition file, we allow a user modified version of this file to
+# be present in one of the usr_src directories.
+
+my $nl_defaults_file;
+if (@usr_src_dirs) {
+    foreach my $dir (@usr_src_dirs) {
+        if (-f "$dir/namelist_defaults_cam.xml") {
+            $nl_defaults_file = "$dir/namelist_defaults_cam.xml";
+            last;
+        }
+    }
+}
+if (! defined $nl_defaults_file) {
+    # default location of namelist defaults file
+    $nl_defaults_file = "$cfgdir/namelist_files/namelist_defaults_cam.xml";
+    (-f "$nl_defaults_file")  or  die <<"EOF";
+    ** $ProgName - ERROR: Cannot find namelist defaults file \"$nl_defaults_file\" **
+EOF
+}
+
+if ($print>=2) { print "Using namelist defaults file $nl_defaults_file$eol"; }
+
+my $defaults = Build::NamelistDefaults->new($nl_defaults_file, $cfg);
+
+#-----------------------------------------------------------------------------------------------
+# Similarly to the namelist definition and defaults files, the use case file
+# may also come from the usr_src directories.  Determine the location of the
+# use case file.
+
+my $use_case_file;
+if (defined $opts{'use_case'}) {
+
+    if (@usr_src_dirs) {
+        foreach my $dir (@usr_src_dirs) {
+            if (-f "$dir/$opts{'use_case'}.xml") {
+                $use_case_file = "$dir/$opts{'use_case'}.xml";
+                last;
+            }
+        }
+    }
+
+    if (! defined $use_case_file) {
+        # default location of namelist use case files
+        $opts{'use_case_dir'} = "$cfgdir/namelist_files/use_cases";
+        validate_use_case("commandline", \%opts);
+        $use_case_file = "$opts{'use_case_dir'}/$opts{'use_case'}.xml";
+    }
+
+    if ($print>=2) { print "Using namelist use case file $use_case_file$eol"; }
+}
+
+#-----------------------------------------------------------------------------------------------
+# Create an empty namelist object.  Add values to it in order of precedence.
+my $nl = Build::Namelist->new();
+
+#-----------------------------------------------------------------------------------------------
+
+# Some regular expressions...
+# **N.B.** the use of qr// for precompiling regexps isn't supported until perl 5.005.
+my $TRUE  = "\.true\.";
+my $FALSE = "\.false\.";
+
+#-----------------------------------------------------------------------------------------------
+
+# Process the user input in order of precedence.  At each point we'll only add new
+# values to the namelist and not overwrite previously specified specified values which
+# have higher precedence.
+
+# Process the commandline args that provide specific namelist values.
+
+# Case name
+if (defined $opts{'case'}) { add_default($nl, 'case_name', 'val'=>$opts{'case'}); }
+
+# Run type
+if (defined $opts{'runtype'}) { add_default($nl, 'start_type', 'val'=>$opts{'runtype'}); }
+
+# Process the -namelist arg.
+
+if (defined $opts{'namelist'}) {
+    # Parse commandline namelist
+    my $nl_arg = Build::Namelist->new($opts{'namelist'});
+
+    # Validate input namelist -- trap exceptions
+    my $nl_arg_valid;
+    eval { $nl_arg_valid = $definition->validate($nl_arg); };
+    if ($@) {
+        die "$ProgName - ERROR: Invalid namelist variable in commandline arg '-namelist'.\n $@";
+    }
+
+    # Merge input values into namelist.  Previously specified values have higher precedence
+    # and are not overwritten.
+    $nl->merge_nl($nl_arg_valid);
+}
+
+# Process the -infile arg.
+
+if (defined $opts{'infile'}) {
+    # Parse namelist input from a file
+    my $nl_infile = Build::Namelist->new($opts{'infile'});
+
+    # Validate input namelist -- trap exceptions
+    my $nl_infile_valid;
+    eval { $nl_infile_valid = $definition->validate($nl_infile); };
+    if ($@) {
+        die "$ProgName - ERROR: Invalid namelist variable in '-infile' $opts{'infile'}.\n $@";
+    }
+
+    # Merge input values into namelist.  Previously specified values have higher precedence
+    # and are not overwritten.
+    $nl->merge_nl($nl_infile_valid);
+}
+
+# Process the -use_case arg.
+# Declare global symbol $uc_defaults even if it's not defined, because we check whether it's
+# defined before using it in the get_default_value method below.
+
+my $uc_defaults;
+if (defined $use_case_file) {
+
+    # The use case definition is contained in an xml file with the same format as the defaults file.
+    # Create a new NamelistDefaults object.
+    $uc_defaults = Build::NamelistDefaults->new($use_case_file, $cfg);
+
+    # Loop over the variables specified in the use case.
+    # A defaults file may contain information for variables that are not namelist variables.
+    # Check each name in the defaults file, and add each namelist variable to the namelist.
+    my @vars = $uc_defaults->get_variable_names();
+    VAR: foreach my $var (@vars) {
+
+        # Query the definition to find which group the variable belongs to.  Skip if not found.
+        my $group = $definition->get_group_name($var);
+        if ($group) {
+            # Get the value of $var from the use case defaults
+            my $val = $uc_defaults->get_value($var);
+            if (defined $val) {
+                add_default($nl, $var, 'val'=>$val);
+            }
+            # If the use case doesn't provide a default value, then just ignore.  This allows the
+            # use case mechanism to provide defaults for some attributes (e.g. a specific grid), and
+            # not for others.
+        }
+    }
+}
+
+#-----------------------------------------------------------------------------------------------
+
+# Add default values for required namelist variables that have not been previously set.
+# This is done either by using the namelist default object, or directly with inline logic.
+if ($print>=2) {
+    print "Writing namelist files for cesm scripts$eol";
+}
+
+# Composition of air
+add_default($nl, 'dry_air_species');
+add_default($nl, 'water_species_in_air');
+# Spectral Element dycore
+my $dyn = $cfg->get('dyn');
+
+# Physics package checks done here since aqua_planet setting is in
+# the seq_infodata_inparm group
+my $phys_mode_flags = 0;
+my $adia_mode = 0;
+my $aqua_mode = 0;
+
+my $phys = $cfg->get('phys');
+
+# Aqua planet
+
+my $aqua_mode = $cfg->get('aquaplanet');
+
+if ($aqua_mode) {
+    ++$phys_mode_flags;
+}
+
+# Consistency check for namelist variables used to implement physics modes.
+if ($phys eq 'adiabatic') {
+    $adia_mode = 1;
+    ++$phys_mode_flags;
+}
+my $ideal_mode = 0;
+if ($phys eq 'kessler' or $phys eq 'held_suarez' or $phys eq 'tj2016') {
+    $ideal_mode = 1;
+    ++$phys_mode_flags;
+}
+if ($phys_mode_flags > 1) {
+    die "$ProgName - ERROR: Only one of the variables atm_adiabatic, atm_ideal_phys, and aqua_planet can be set .true. \n";
+}
+
+# Set convenience flag to indicate that one of the ideal or adiabatic
+# modes is being used.
+my $simple_phys = 0;
+if ($adia_mode or $ideal_mode) { $simple_phys = 1; }
+
+# Single column mode
+my $scam = $cfg->get('scam');
+
+# Coupling interval
+# The default is for CAM to couple to the surface components every CAM timestep.
+# So start by making sure CAM's dtime is set.
+add_default($nl, 'dtime');
+my $dtime = $nl->get_value('dtime');
+
+#-----------------------------------------------------------------------------------------------
+# Add defaults for the CAM component
+
+my $chem = $cfg->get('chem');
+my $waccm_chem = ($chem =~ "waccm_");
+my $waccm_phys = $cfg->get('waccm_phys');
+my $carma = $cfg->get('carma');
+
+my $prog_species = $cfg->get('prog_species');
+my $prog_ghg1    = ($chem =~ "trop_mozart" or $chem =~ "trop_strat" or $chem =~ "ghg" or $chem =~ "_sc" or $prog_species =~ "GHG");
+my $prog_ghg2    = ($chem =~ "ghg" or $chem =~ "_sc" or $prog_species =~ "GHG");
+my $ghg_chem     = ($chem =~ "ghg" or $chem =~ "_sc");
+my $aero_chem    = ($chem =~ "aero" or $chem eq 'trop_mozart' or $chem =~ 'trop_strat' or $chem =~ 'tsmlt');
+
+my $chem_rad_passive = ($nl->get_value('chem_rad_passive') =~ /$TRUE/io);
+my $ipcc_aircraft_emis = ($nl->get_value('ipcc_aircraft_emis') =~ /$TRUE/io);
+
+my $rad_prog_ocarb = (($prog_species =~ "OC"   or $aero_chem) and !($chem_rad_passive));
+my $rad_prog_bcarb = (($prog_species =~ "BC"   or $aero_chem) and !($chem_rad_passive));
+my $rad_prog_sulf  = (($prog_species =~ "SO4"  or $aero_chem) and !($chem_rad_passive));
+my $rad_prog_dust  = (($prog_species =~ "DST"  or $aero_chem) and !($chem_rad_passive));
+my $rad_prog_sslt  = (($prog_species =~ "SSLT" or $aero_chem) and !($chem_rad_passive));
+my $rad_prog_ozone = (($chem =~ "mozart" or $chem =~ "waccm_ma" or $chem =~ "tsmlt" or $chem =~ "trop_strat") and !($chem_rad_passive));
+
+# Check for eruptive volcano emissions.  These will be radiatively active by default, but
+# only if using BAM and the camrt radiation package
+# or if using MAM and the rrtmg package
+(my $volcaero_file = $nl->get_value('prescribed_volcaero_file')) =~ s/\s//g; # strip white space
+$volcaero_file =~ s/['"]//g; # strip quotes "'
+my $rad_volcaero = ($volcaero_file and $volcaero_file ne 'NONE' ) ? 1 : 0;
+#################
+# CAM namelists #
+#################
+
+# Print conservation errors
+# Turn this off for PERGRO runs or for WACCM runs
+if ($cfg->get('pergro') or ($chem ne 'none')) {
+    add_default($nl, 'print_energy_errors', 'val'=>'.false.');
+}
+
+# Set default for QNEG warnings
+add_default($nl, 'print_qneg_warn', 'val'=>'summary');
+
+# Turn on debugging checks
+if ($cfg->get('debug')) {
+    add_default($nl, 'state_debug_checks', 'val'=> '.true.')
+}
+
+my $prescribe_aerosols = $TRUE;
+if ($simple_phys) {$prescribe_aerosols = $FALSE;}
+
+
+
+# Initial conditions
+#
+# Most of the attributes that are matched to determine the default initial file are
+# build time options that come from the configuration object.  But there are also a couple
+# of run time options that need to be considered.  Set those in the optional hash argument
+# to add_default.
+my %atts = ();
+
+# The initial date is an attribute in the defaults file which should be matched unless
+# the user explicitly requests to ignore the initial date via the -ignore_ic_date option,
+# or just ignore the year of the initial date via the -ignore_ic_year option.
+my $ic_date;
+if (defined $opts{'start_ymd'}) {
+    $ic_date = $opts{'start_ymd'};
+} else {
+    die "$ProgName - ERROR: -start_ymd is required"
+}
+if ($opts{'ignore_ic_date'}) {
+    # Don't set any attribute for date matching.  By putting this option first it
+    # will take precedence in the case that the user has set both -ignore_ic_date
+    # and -ignore_ic_year
+}
+elsif ($opts{'ignore_ic_year'}) {
+    $atts{'ic_md'} = $ic_date;
+}
+else {
+    # if neither option specified then match full date
+    $atts{'ic_ymd'} = $ic_date;
+}
+# add_default($nl, 'ncdata', %atts);
+
+# # analytic ICs
+# my $analytic_ic = $cfg->get('analytic_ic');
+# if ($analytic_ic) {
+#     add_default($nl, 'analytic_ic_type');
+# }
+
+#
+# Simulated years: sim_year and sim_year_start
+#
+# sim_year
+# This is used to identify appropriate defaults for climatological or transient
+# forcing datasets.  If user hasn't specified then default to 2000 (present day climatology).
+my $sim_year = '2000';
+if (defined $nl->get_value('sim_year')) {
+    $sim_year = $nl->get_value('sim_year');
+    # strip quotes to use the value in attribute matching.
+    $sim_year =~ s/['"]//g; #"'
+}
+
+# sim_year_start
+# If sim_year is input as a range of years, then select the first year
+# to use with some datasets
+my $sim_year_start = $sim_year;
+if ($sim_year =~ /(\d+)-(\d+)/) {
+    $sim_year_start = $1;
+}
+
+# # Topography
+# add_default($nl, 'use_topo_file');
+# my $use_topo_file = $nl->get_value('use_topo_file');
+# if (!defined $use_topo_file or ($use_topo_file =~ m/$TRUE/io)) {
+#     # Add the topo file unless the "do not use" override has been set.
+#     add_default($nl, 'bnd_topo');
+# }
+
+# Gravity wave drag settings
+
+
+
+#-----------------------------------------------------------------------------------------------
+# Rename component logfiles.
+#
+# This requires special handling because the logfiles are coordinated using
+# share code.  Each component is using shr_file_mod::shr_file_setIO to attach
+# a unique Fortran unit to a named file.  shr_file_setIO reads the namelist
+# group /modelio/ and hence each component is using the same variable names.
+# To work around this component specific names have been added to the special
+# namelist group /camexp/.  Check for those variables and write the component
+# specific versions of /modelio/ to files whose names are hardwired in the top
+# level component interface, e.g., atm_comp_mct, lnd_comp_mct, and seq_ccsm_drv.
+
+my @comps = qw(atm cpl lnd rof);
+foreach my $comp (@comps) {
+
+    my $logfile    = "${comp}_logfile";
+    my $logfiledir = "${comp}_logfile_diro";
+    my $outfile    = "${comp}_modelio.nml";
+
+    # check to see if user requests renaming this component logfile
+    my $logfile_val = $nl->get_variable_value('camexp', $logfile);
+    if (defined $logfile_val) {
+
+        # create namelist object for /modelio/
+        my $modelio = Build::Namelist->new("&modelio logfile=$logfile_val /");
+
+        # check whether a directory has been specified... if so add to namelist
+        my $logfiledir_val = $nl->get_variable_value('camexp', $logfiledir);
+        if (defined $logfiledir_val) {
+            $modelio->set_variable_value('modelio', 'diro', $logfiledir_val);
+        }
+
+        # write the namelist to the component specific file
+        $modelio->write($outfile);
+        if ($print>=1) { print "Writing modelio namelist to $outfile $eol"; }
+    }
+}
+
+#-----------------------------------------------------------------------------------------------
+# Write output files
+
+# Get array of group names that have been defined in the namelist.
+my @nl_groups = $nl->get_group_names();
+
+# Temp vars reused for each component.
+my @comp_groups;
+my $outfile;
+
+# Create a hash with the group names as keys.  This makes it easy to remove
+# names from the list.
+my %nl_group = ();
+foreach my $name (@nl_groups) { $nl_group{$name} = ''; }
+
+# Dry deposition and MEGAN VOC emis namelists
+@comp_groups = qw(drydep_inparm megan_emis_nl fire_emis_nl carma_inparm ndep_inparm);
+$outfile = "$opts{'dir'}/drv_flds_in";
+$nl->write($outfile, 'groups'=>\@comp_groups);
+if ($print>=1) {
+    print "CAM writing dry deposition namelist to drv_flds_in $eol";
+}
+delete @nl_group{@comp_groups};
+
+# CAM
+#
+# Have removed the group names for components not associated with CAM, so write
+# the remaining groups to the CAM namelist file.
+# *** N.B. *** The assumption that all remaining groups belong to CAM allows adding
+#              new groups to CAM's definition file without requiring a code modification
+#              here to have that group written to the namelist file.
+
+# First remove the camexp group since it's a special purpose group that's not
+# read by CAM
+if (defined $nl_group{'camexp'}) { delete $nl_group{'camexp'}; }
+@comp_groups = sort keys %nl_group;
+$outfile = "$opts{'dir'}/atm_in";
+$nl->write($outfile, 'groups'=>\@comp_groups);
+if ($print>=1) { print "CAM writing namelist to atm_in $eol"; }
+
+#-----------------------------------------------------------------------------------------------
+# Test that input files exist locally.
+if ($opts{'test'}) {
+    print "Checking whether input datasets exist locally...$eol";
+    check_input_files($nl);
+}
+
+# Write the input dataset filepaths to the file specified by $opts{'inputdata'}.
+if ($opts{'inputdata'}) {
+    check_input_files($nl, $inputdata_rootdir, $opts{'inputdata'});
+}
+
+# END OF MAIN SCRIPT
+#===============================================================================================
+
+# This is a slow implementation of first_index from List::MoreUtils,
+# because that module does not seem to be generally available.
+sub first_index {
+  my $check_str = shift; # String to find in list
+  my @check_list = @_; # List of available strings
+  my $findex = -1;
+  my $lindex = 0;
+  foreach my $cstr (@check_list) {
+    if ($check_str eq $cstr) {
+      $findex = $lindex;
+      last;
+    } else {
+      $lindex++;
+    }
+  }
+    return $findex;
+}
+
+sub create_mode_defs {
+
+# create the list of strings used to define the MAM modes
+
+    my $names     = shift;  # $names->[$m]   - name of mode $m
+    my $types     = shift;  # $types->[$m]   - type of mode $m
+    my $num       = shift;  # $num->[$m]     - name of intersitial number m.r. for mode $m
+    my $num_cw    = shift;  # $num_cw->[$m]  - name of cloud borne number m.r. for mode $m
+    my $num_src   = shift;  # $num_src->[$m] - source of interstitial number m.r. for mode $m
+    my $spec      = shift;  # $spec->[$m][$i]      - name of interstitial species $i in mode $m
+    my $spec_type = shift;  # $spec_type->[$m][$i] - type of species $i in mode $m
+    my $spec_cw   = shift;  # $spec_cw->[$m][$i]   - name of cloud borne species $i in mode $m
+    my $spec_src  = shift;  # $spec_src->[$m][$i]  - source of interstitial species $i in mode $m
+
+    my $mode_def;
+
+    # number of modes
+    my $nmodes = scalar(@$names);
+    my $aero_modes = "${nmodes}mode";
+
+    for (my $m=0; $m < $nmodes; ++$m) {
+
+        # initial mode definition string
+        $mode_def .= "'$names->[$m]:$types->[$m]:=',";
+
+        # add the number mixing ratio field names.  the source of the number conc
+        # of cloud borne aerosol defaults to N
+        $mode_def .= "'$num_src->[$m]:$num->[$m]:N:$num_cw->[$m]:num_mr:+',";
+
+        # number of species in mode
+        my $nspec = scalar(@{$spec->[$m]});
+        for (my $i=0; $i < $nspec; ++$i) {
+
+            my $term = ":+',";        # more species to come
+            if ($i == $nspec - 1) {
+                if ($m == $nmodes - 1) {
+                    $term = "'";      # last specie and no more modes
+                }
+                else {
+                    $term = "',";     # last specie but more modes to come
+                }
+            }
+
+            # get default properties file
+            my $spec_name = $spec->[$m][$i];
+            my %aero_modes_hash = ('mam'=>$aero_modes);
+           (my $constituent = $spec_name) =~ s/_.*//;
+            $constituent = substr( $constituent, 0, 3 );
+            my $rel_filepath = get_default_value("mam_${constituent}",\%aero_modes_hash);
+            my $abs_filepath = set_abs_filepath($rel_filepath, $inputdata_rootdir);
+
+            # add species info. the source of the mixing ratio
+            # for cloud borne species defaults to N
+            $mode_def .= "'" .
+                         $spec_src->[$m][$i]  . ":" .
+                         $spec->[$m][$i]      . ":N:" .
+                         $spec_cw->[$m][$i]   . ":" .
+                         $spec_type->[$m][$i] . ":" .
+                         $abs_filepath        . $term;
+        }
+
+
+    }
+
+    return $mode_def;
+}
+
+#===============================================================================================
+sub add_default {
+
+# Add a value for the specified variable to the specified namelist object.  The variables
+# already in the object have the higher precedence, so if the specified variable is already
+# defined in the object then don't overwrite it, just return.
+#
+# This method checks the definition file and adds the variable to the correct
+# namelist group.
+#
+# The value can be provided by using the optional argument key 'val' in the
+# calling list.  Otherwise a default value is obtained from the namelist
+# defaults object.  If no default value is found this method throws an exception
+# unless the 'nofail' option is set true.
+#
+# Additional optional keyword=>value pairs may be specified.  If the keyword 'val' is
+# not present, then any other keyword=>value pairs that are specified will be used to
+# match attributes in the defaults file.
+#
+# Example 1: Specify the default value $val for the namelist variable $var in namelist
+#            object $nl:
+#
+#  add_default($nl, $var, 'val'=>$val)
+#
+# Example 2: Add a default for variable $var if an appropriate value is found.  Otherwise
+#            don't add the variable
+#
+#  add_default($nl, $var, 'nofail'=>1)
+#
+#
+# ***** N.B. ***** This routine assumes the following variables are in package main::
+#  $definition        -- the namelist definition object
+#  $inputdata_rootdir -- CCSM inputdata root directory
+
+    my $nl = shift;     # namelist object
+    my $var = shift;    # name of namelist variable
+    my %opts = @_;      # options
+
+    my $val = undef;
+
+    # Query the definition to find which group the variable belongs to.  Exit if not found.
+    my $group = $definition->get_group_name($var);
+    unless ($group) {
+        my $fname = $definition->get_file_name();
+        die "$ProgName - ERROR: variable \"$var\" not found in namelist definition file $fname.\n";
+    }
+
+    # check whether the variable has a value in the namelist object -- if so then return
+    $val = $nl->get_variable_value($group, $var);
+    if (defined $val) {return;}
+
+    # Look for a specified value in the options hash
+    if (defined $opts{'val'}) {
+        $val = $opts{'val'};
+    }
+    # or else get a value from namelist defaults object.
+    # Note that if the 'val' key isn't in the hash, then just pass anything else
+    # in %opts to the get_value method to be used as attributes that are matched
+    # when looking for default values.
+    else {
+        $val = get_default_value($var, \%opts);
+    }
+
+    # if no value is found then exit w/ error (unless 'nofail' option set)
+    unless (defined $val) {
+        unless ($opts{'nofail'}) {
+            print "$ProgName - ERROR: No default value found for $var\n".
+                "user defined attributes:\n";
+            foreach my $key (keys(%opts)) {
+                if ($key ne 'nofail' and $key ne 'val') {
+                    print "key=$key  val=$opts{$key}\n";
+                }
+            }
+            die;
+        }
+        else {
+            return;
+        }
+    }
+
+    # query the definition to find out if the variable is an input pathname
+    my $is_input_pathname = $definition->is_input_pathname($var);
+
+    # The default values for input pathnames are relative.  If the namelist
+    # variable is defined to be an absolute pathname, then prepend
+    # the CCSM inputdata root directory.
+    if ($is_input_pathname eq 'abs') {
+        $val = set_abs_filepath($val, $inputdata_rootdir);
+    }
+
+    # Some complex namelist variables set in use cases may have "$INPUTDATA_ROOT"
+    # in the data path specifications.  Subsitute the resolved path here for these cases.
+    $val =~ s/\$INPUTDATA_ROOT/$inputdata_rootdir/g ;
+
+    # query the definition to find out if the variable takes a string value.
+    # The returned string length will be >0 if $var is a string, and 0 if not.
+    my $str_len = $definition->get_str_len($var);
+
+    # If the variable is a string, then add quotes if they're missing
+    if ($str_len > 0) {
+        $val = quote_string($val);
+    }
+
+    # set the value in the namelist
+    $nl->set_variable_value($group, $var, $val);
+}
+
+#-----------------------------------------------------------------------------------------------
+
+sub get_default_value {
+
+# Return a default value for the requested variable.
+# Return undef if no default found.
+#
+# ***** N.B. ***** This routine assumes the following variables are in package main::
+#  $defaults          -- the namelist defaults object
+#  $uc_defaults       -- the use case defaults object
+
+    my $var_name    = lc(shift);   # name of namelist variable (case insensitive interface)
+    my $usr_att_ref = shift;       # reference to hash containing user supplied attributes
+
+    # Check first in the use case defaults
+    if (defined $uc_defaults) {
+        my $val = $uc_defaults->get_value($var_name, $usr_att_ref);
+        if ($val) {return $val;}
+    }
+
+    # Check in the namelist defaults
+    return $defaults->get_value($var_name, $usr_att_ref);
+
+}
+
+#-----------------------------------------------------------------------------------------------
+
+sub fv_decomp_set{
+
+# Return a decomposition for the FV dycore, expressed as the value for the namelist
+# variable npr_yz.  The value of npr_yz is ny,nz,nx,ny where ny, nz, and nx are
+# respectively the number of y, z, and x subdomains in the multi-2D decomposition.
+# The following constraints must be observed:
+# 1) ny*nz = ntasks  (ny*nz can be less than ntasks in the case that the dynamics runs
+#                     on a subset of the total tasks.  Assume the user will set the
+#                     decomp explicitly if that is what is desired.)
+# 2) nx=nz           (this is an empirically determined constraint for efficiency in the
+#                     dycore communications)
+# 3) ny*3 <= nlat    (these constraints are imposed by the dycore)
+#    nz   <= nlev
+#
+# The strategy for setting the default decomposition is to use the smallest possible
+# number of z subdomains.  Start with 1 (which is the 1D decomposition).  If that works
+# then done.  If not, increase nz, check that it divides ntasks, if so does resulting
+# ny satisfy ny*3 <= nlat, if so then done.  Etc.
+
+    my $ntasks = $opts{'ntasks'};
+    my $nlat = $cfg->get('nlat');
+    my $nlev = $cfg->get('nlev');
+    my ($ny, $nz);
+
+    # die if bad input
+    if ($ntasks < 1) {
+        die "$ProgName - ERROR: fv_decomp_set: bad input: ntasks=$ntasks.\n" .
+            "  -ntask argument to build-namelist is wrong.";
+    }
+
+    NZ: for ($nz = 1; $nz <= $nlev; ++$nz) {
+
+        # test that $nz divides $ntasks
+        if ($ntasks%$nz == 0) {
+
+            $ny = $ntasks/$nz;
+
+            # test that y subdomains contain at least 3 latitudes
+            # if so then done
+            if (3*$ny <= $nlat) {last NZ;}
+        }
+    }
+
+    # die if algorithm failed
+    if ($nz > $nlev  or  $ny*$nz != $ntasks) {
+        die "$ProgName - ERROR: fv_decomp_set failed to find a decomposition.\n" .
+            "  npr_yz needs to be set by the user.";
+    }
+
+    return "$ny,$nz,$nz,$ny";
+}
+
+#-----------------------------------------------------------------------------------------------
+sub fv3_decomp_set{
+# Return a decomposition for the FV3 dycore, expressed as the value for the namelist
+# variable layout.  The value of layout is nx,ny where nx and ny are
+# respecitively the number of x, y, subdomains of an FV3 tile in the multi-2D decomposition.
+# The following constraints must be observed:
+# 1) nx*ny*6 = ntasks (nx*ny*6 must be equal to ntasks.  fv3 can handle other cases but for
+#                     now this decomp routine requires that constraint.
+#                     Assume the user will set the
+#                     decomp explicitly if that is what is desired.)
+# 2) tilesizex/nx >=4 decomp must allow for a minimum of 4 elements in a x direction task
+# 3) tilesizey/ny >=4 decomp must allow for a minimum of 4 elements in a y direction task
+# 4) tilesizex%nx =0  decomp requires that tile points in x direction must divide evenly by nx
+# 5) tilesizey%ny =0  decomp requires that tile points in y direction must divide evenly by ny
+#
+# The strategy for setting the default decomposition is to use a decomposition with approximately
+# equal nx and ny values
+
+    my $tasks = $opts{'ntasks'};
+    my $xpts = $nl->get_value('fv3_npx') - 1;
+    my $ypts = $nl->get_value('fv3_npy') - 1;
+    my $nx;
+    my $ny;
+    my $aspect = $xpts;
+    my $layoutx = 0;
+    my $layouty = 0;
+
+    # die if bad input
+    if ($tasks < 1) {
+        die "$ProgName - ERROR: fv3_decomp_set: bad input: ntasks=$tasks.\n" .
+            "  -ntask argument to build-namelist is wrong.";
+    }
+
+  NZ: for ($nx = 1; $nx <= int $xpts/4; ++$nx) {
+
+      # test that $nx divides $xpts evenly
+      if ($xpts%$nx == 0) {
+	  $ny = int $tasks/$nx/6;
+	  # test that $ny divides $ypts exactly
+	  # if so then get aspect ratio
+	  if ($ny != 0) {
+	      if ($ypts%$ny == 0 and  $nx*$ny*6 == $tasks) {
+		  if ($nx == $ny) {
+		      $layoutx=$nx;
+		      $layouty=$ny;
+		      last NZ;
+		  }else{
+		      if (max($nx,$ny) / min($nx,$ny) < $aspect) {
+			  $aspect=max($nx,$ny) / min($nx,$ny);
+			  $layoutx=$nx;
+			  $layouty=$ny;
+		      }
+		  }
+	      }
+	  }
+      }
+    }
+    # die if algorithm failed
+    if ($layoutx > $xpts/4 or $layouty > $ypts/4  or  $layoutx*$layouty*6 != $tasks) {
+        die "$ProgName - ERROR: fv3_decomp_set failed to find a decomposition.\n" .
+            "  layout needs to be set by the user.";
+    }
+
+    return "$layoutx,$layouty";
+
+}
+
+#-----------------------------------------------------------------------------------------------
+
+sub check_input_files {
+
+# For each variable in the namelist which is an input dataset, or contains filepaths
+# for input datasets, either:
+# 1) check to see if the input dataset exists on local disk, or
+# 2) write the input dataset filepath to a file.
+#
+# In "test" mode (1) the routine is called with just one argument.
+# In "inputdata" mode (2) the routine is called with three arguments.
+#
+# ***** N.B. ***** This routine assumes the following variables are in package main::
+#  $definition        -- the namelist definition object
+
+    my $nl                = shift;    # namelist object
+    my $inputdata_rootdir = shift;    # if false prints test, else creates inputdata file
+    my $outfile           = shift;
+
+    my $fh;
+    if (defined $inputdata_rootdir) {
+        open $fh, '>>', $outfile or die "check_input_files: error opening $outfile: $!";
+    }
+
+    # Look through all namelist groups
+    my @groups = $nl->get_group_names();
+    foreach my $group (@groups) {
+
+        # Look through all variables in each group
+        my @vars = $nl->get_variable_names($group);
+        foreach my $var (@vars) {
+
+            # Is the variable an input dataset?
+            my $input_pathname_type = $definition->is_input_pathname($var);
+
+            # If it is, check whether it exists locally and print status
+            if ($input_pathname_type) {
+
+                # Get pathname of input dataset
+                my $pathname = $nl->get_variable_value($group, $var);
+                # Need to strip the quotes
+                $pathname =~ s/['"]//g;
+
+                if ($input_pathname_type eq 'abs') {
+                    if ($inputdata_rootdir) {
+                        print $fh "$var = $pathname\n";
+                    }
+                    else {
+                        if (-e $pathname) {  # use -e rather than -f since the absolute pathname
+                                             # might be a directory
+                            print "OK -- found $var = $pathname\n";
+                        }
+                        else {
+                            print "NOT FOUND:  $var = $pathname\n";
+                        }
+                    }
+                }
+                elsif ($input_pathname_type =~ m/rel:(.+)/o) {
+                    # The match provides the namelist variable that contains the
+                    # root directory for a relative filename
+                    my $rootdir_var = $1;
+                    my $rootdir = $nl->get_variable_value($group, $rootdir_var);
+                    $rootdir =~ s/['"]//g;          #"'
+                    if ($inputdata_rootdir) {
+                        if ($pathname !~ m/^\s*$/) { # not 0 or more whitespace characters
+                            $pathname = "$rootdir/$pathname";
+                            print $fh "$var = $pathname\n";
+                        }
+                    }
+                    else {
+                        if (-f "$rootdir/$pathname") {
+                            print "OK -- found $var = $rootdir/$pathname\n";
+                        }
+                        else {
+                            print "NOT FOUND:  $var = $rootdir/$pathname\n";
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    # Treat special cases...
+
+    # These namelist variables are arrays of strings.
+    my @vars = qw(aircraft_specifier csw_specifier ext_frc_specifier
+                  rad_climate rad_diag_1 rad_diag_2 rad_diag_3 rad_diag_4
+                  rad_diag_5 rad_diag_6 rad_diag_7 rad_diag_8 rad_diag_9
+                  rad_diag_10 srf_emis_specifier mode_defs);
+
+    foreach my $var (@vars) {
+
+        # Is the variable in the namelist?
+        my $value = $nl->get_value($var);
+        if (defined $value) {
+
+            # The current namelist parser stores all values as a single
+            # string, so start by extracting each quoted string.
+
+            while ($value =~ m/['"]          # opening quote
+                               ([^'"]+)      # capture all non-quote characters up to
+                               ['"]          # closing quote
+                               (.*)          # capture rest of string including newlines
+                              /sxo) {        # the s modifier lets . match newlines
+                my $spec = $1;
+                $value = $2;
+
+                # Look for values of the form 'name -> filepath'
+                # Extract name and filename
+                if ($spec =~ m/\s*(\w+)      # name of species preceded by optional whitespace
+                               \s*->\s*      # -> separator surrounded by optional whitespace
+                               (.+)          # filename and possible coefficient(all characters up to optional whitespace)
+                              /xo) {
+                    my $name = $1;
+                    my $file = $2;
+
+                    # look for coefficient multiplier proceeding the filepath in the form ' X * filepath '
+                    if ($file  =~ m/\s*(\w+)      # coeffecient preceded by optional whitespace
+                                    \s*\*\s*      # '*' separator surrounded by optional whitespace
+                                    (\S+)         # filepath (all characters up to optional whitespace)
+                                    /xo) {
+                        my $coef = $1;
+                        $file = $2;
+                    }
+
+                    # The filenames in the aircraft_specifier strings are not absolute.  They are
+                    # relative to the root directory from aircraft_datapath.  Create absolute pathnames.
+                    if ($var eq 'aircraft_specifier') {
+                        my $datapath = $nl->get_value('aircraft_datapath');
+                        if (defined $datapath) {
+                            # set absolute filepath
+                            $file = set_abs_filepath($file, $datapath);
+                        }
+                    }
+
+
+                    if ($inputdata_rootdir) {
+                        print $fh "$var for $name = $file\n";
+                    }
+                    else {
+                        if (-f $file) {
+                            print "OK -- found $var for $name = $file\n";
+                        }
+                        else {
+                            print "NOT FOUND:  $var for $name = $file\n";
+                        }
+                    }
+                }
+                # Look for values that begin with 'X:name:name2' where X is one of [AMN]
+                # Extract name and filename
+                elsif ($spec =~ m/^\s*[AMN]:(\w+) # name of species preceded by optional whitespace and X:
+                                  :               # : separator
+                                  (\S+)           # name2
+                                 /xo) {
+                    my $name  = $1;
+                    my $name2 = $2;
+
+                    # If $name2 starts with a slash, then it is an absolute filepath.
+                    # If $name2 starts with a $, then it is an unresolved filepath
+                    # (generated when run from CCSM scripts).
+                    # Otherwise check for more fields
+                    if ($name2 =~ m:^[/\$]:) {
+
+                        my $file = $name2;
+                        if ($inputdata_rootdir) {
+                            print $fh "$var for $name = $file\n";
+                        }
+                        else {
+                            if (-f $file) {
+                                print "OK -- found $var for $name = $file\n";
+                            }
+                            else {
+                                print "NOT FOUND:  $var for $name = $file\n";
+                            }
+                        }
+                    }
+                    else {
+                        # If this value is from a mode_defs string that defined
+                        # a mode specie, then breaking it up into colon separated
+                        # fields will provide a filepath in the 4rd field (index 3).
+                        my @flds = split /:/, $name2;
+                        if (scalar(@flds) >= 4) {
+
+                            if ($flds[3] =~ m:^[/\$]:) {
+
+                                my $file = $flds[3];
+                                if ($inputdata_rootdir) {
+                                    print $fh "$var for $name = $file\n";
+                                }
+                                else {
+                                    if (-f $file) {
+                                        print "OK -- found $var for $name = $file\n";
+                                    }
+                                    else {
+                                        print "NOT FOUND:  $var for $name = $file\n";
+                                    }
+                                }
+                            }
+                        }
+                    }
+
+                }
+                # Look for values that end with "=".  These are the initial strings in mode
+                # definitions and should just be ignored.
+                elsif ($spec =~ m/^\s*(\S+)=\s*$/) { # string which ends with "=" and has optional
+                                                     # begining and trailing whitespace
+                    # ignore it
+                }
+                else {
+                    print "Failed to parse \'$spec\'\n";
+                }
+
+            } # end of while loop
+        }
+    }
+
+    close $fh if defined $inputdata_rootdir;
+
+    return 0;
+}
+
+#-----------------------------------------------------------------------------------------------
+
+sub check_snapshot_settings {
+
+    # This checks the snapshot settings
+
+    my $cam_take_snapshot_before = $nl->get_variable_value('phys_ctl_nl', 'cam_take_snapshot_before');
+    my $cam_take_snapshot_after  = $nl->get_variable_value('phys_ctl_nl', 'cam_take_snapshot_after');
+    my $cam_snapshot_before_num  =  $nl->get_variable_value('phys_ctl_nl', 'cam_snapshot_before_num');
+    my $cam_snapshot_after_num   =  $nl->get_variable_value('phys_ctl_nl', 'cam_snapshot_after_num');
+    my $microphys = $cfg->get('microphys');
+
+    if (($cam_snapshot_before_num >= 0) or ($cam_snapshot_after_num >= 0)) {
+        print  "cam_snapshot settings\n";
+        print "cam_take_snapshot_before = $cam_take_snapshot_before\n";
+        print "cam_take_snapshot_after  = $cam_take_snapshot_after\n";
+        print "cam_snapshot_before_num = $cam_snapshot_before_num\n";
+        print "cam_snapshot_after_num  = $cam_snapshot_after_num\n";
+    } else {
+        return;  # No snapshots are requested
+    }
+
+    # Set the empty_htapes always to false for snapshot runs
+    $nl->set_variable_value('cam_history_nl', 'empty_htapes', $FALSE);
+
+    # Check for "take_snapshot" and history file number both being set or not set.  Only one set is an error
+    if ( ((defined $cam_take_snapshot_before ) xor  (defined $cam_snapshot_before_num))) {
+        die "ERROR: cam_take_snapshot_before is set to $cam_take_snapshot_before \n and cam_snapshot_before_num is set to
+                      $cam_snapshot_before_num \n Both need to be set or not set";
+    }
+
+    if ( ((defined $cam_take_snapshot_after ) xor  (defined $cam_snapshot_after_num))) {
+        die "ERROR: cam_take_snapshot_after is set to $cam_take_snapshot_after \n and cam_snapshot_after_num is set to
+                      $cam_snapshot_after_num \n Both need to be set or not set";
+    }
+
+    # If a snapshot history file number is negative, turn off that snapshot
+    if ((defined $cam_snapshot_before_num) and ($cam_snapshot_before_num lt 0)) {
+        print "WARNING: No history file assigned to before snapshot, disabling\n";
+        $nl->set_variable_value('phys_ctl_nl', 'cam_take_snapshot_before', "'UNSET'");
+    }
+    if ((defined $cam_snapshot_after_num) and ($cam_snapshot_after_num lt 0)) {
+        print "WARNING: No history file assigned to after snapshot, disabling\n";
+        $nl->set_variable_value('phys_ctl_nl', 'cam_take_snapshot_after', "'UNSET'");
+    }
+
+
+    # Check for "cam_take_snapshot" values for before and after being compatible
+    # Due to the physics call structure, only some before/after pairs are valid
+    # After the appropriate check is found, return as no other checks will pertain
+
+    my $user_set_before = ((defined $cam_take_snapshot_before) and
+                               ($cam_take_snapshot_before eq "'user_set'"));
+    my $user_set_after = ((defined $cam_take_snapshot_after) and
+                              ($cam_take_snapshot_after eq "'user_set'"));
+    if ($user_set_before and $user_set_after) {
+        return; # This is okay, user will set before and after code
+    } elsif ($user_set_before and (not defined $cam_take_snapshot_after)) {
+        return; # This iis okay, user will set before code only
+    } elsif ($user_set_after and (not defined $cam_take_snapshot_before)) {
+        return; # This iis okay, user will set after code only
+    } # No else, just proceed with list checks
+    my @validList_bc = ();
+    my @validList_ac = ();
+    if ($user_set_before) {
+        # We cannot check order so mark all after matches okay.
+        push (@validList_ac, ("'user_set'"));
+        push (@validList_bc, ("'user_set'"));
+    }
+    if ($simple_phys) {
+        # Simple physpkg
+        push (@validList_ac, ("'physics_dme_adjust'"));
+        if ($phys eq 'held_suarez') {
+            push (@validList_bc, ("'held_suarez_tend'"));
+        } elsif ($phys eq 'kessler') {
+            push (@validList_bc, ("'kessler_tend'"));
+        } elsif ($phys eq 'tj2016') {
+            push (@validList_bc, ("'thatcher_jablonowski_precip_tend'"));
+        }
+        if ($chem ne 'none') {
+            push (@validList_bc, ("'chem_timestep_tend'"));
+        }
+    } else {
+        # CAM physpkg
+        push(@validList_ac, ("'chem_emissions'",
+                             "'aoa_tracers_timestep_tend'",
+                             "'co2_cycle_set_ptend'"));
+        if ($chem ne 'none') {
+            push (@validList_ac, ("'chem_timestep_tend'"));
+        }
+        push (@validList_ac, ("'vertical_diffusion_section'",
+                              "'aero_model_drydep'", "'gw_tend'",
+                              "'qbo_relax'", "'iondrag_calc_section'",
+                              "'physics_dme_adjust'"));
+        push (@validList_bc, ("'dadadj_tend'", "'convect_deep_tend'",
+                              "'convect_shallow_tend'"));
+        push (@validList_bc, ("'aero_model_wetdep'", "'radiation_tend'"));
+    }
+    if ($user_set_after) {
+        # We cannot check order so mark all before matches okay.
+        push (@validList_ac, ("'user_set'"));
+        push (@validList_bc, ("'user_set'"));
+    }
+
+    my $before_index_bc = first_index($cam_take_snapshot_before, @validList_bc);
+    my $after_index_bc = first_index($cam_take_snapshot_after, @validList_bc);
+    my $before_index_ac = first_index($cam_take_snapshot_before, @validList_ac);
+    my $after_index_ac = first_index($cam_take_snapshot_after, @validList_ac);
+
+    # If before is set, it must be valid
+    if ((defined $cam_snapshot_before_num) and
+          ($cam_snapshot_before_num ge 0) and
+          (defined $cam_take_snapshot_before) and
+          (($before_index_ac lt 0) and ($before_index_bc lt 0))) {
+        die "ERROR: Invalid cam_take_snapshot_before setting, $cam_take_snapshot_before\n"
+    }
+    # If after is set, it must be valid
+    if ((defined $cam_snapshot_after_num) and
+          ($cam_snapshot_after_num ge 0) and
+          (defined $cam_take_snapshot_after) and
+          (($after_index_ac lt 0) and ($after_index_bc lt 0))) {
+        die "ERROR: Invalid cam_take_snapshot_after setting, $cam_take_snapshot_after\n"
+    }
+    # If at least one of before/after are not set requires no further checking
+    if (  (! defined $cam_take_snapshot_before) or
+          (! defined $cam_take_snapshot_after)) {
+        return;
+    }
+    # If either before or after is 'user_set', end checks
+    if ($user_set_before or $user_set_after) {
+        return;
+    }
+
+    # Some checks to do if both before and after snapshots are being used
+    if ((defined $cam_take_snapshot_before) and
+          ($cam_snapshot_before_num ge 0) and
+          (defined $cam_take_snapshot_after) and
+          ($cam_snapshot_after_num ge 0)) {
+        if ($before_index_ac ge 0) {
+            if ($after_index_bc ge 0) {
+                die "ERROR: before and after snapshots must both be in ",
+                  "tphysbc or both be in tphysac\n";
+            } elsif ($before_index_ac gt $after_index_ac) {
+                die "ERROR: cam_take_snapshot_before is set to ",
+                  "$cam_take_snapshot_before\n and cam_take_snapshot_after is ",
+                  "set to $cam_take_snapshot_after\n",
+                  "This combination is invalid\n";
+            }
+        } else {
+            if ($after_index_ac ge 0) {
+                die "ERROR: before and after snapshots must both be in ",
+                  "tphysbc or both be in tphysac\n";
+            } elsif ($before_index_bc gt $after_index_bc) {
+                die "ERROR: cam_take_snapshot_before is set to ",
+                  "$cam_take_snapshot_before\n and cam_take_snapshot_after is ",
+                  "set to $cam_take_snapshot_after\n",
+                  "This combination is invalid\n";
+            }
+        }
+    }
+}
+
+#-----------------------------------------------------------------------------------------------
+
+sub strip_rootdir {
+
+# Strip a root directory from the begining of a filepath.
+# Allow for the possibility that the root directory is specified as a shell variable
+# to support a CCSM script requirement.
+
+    my ($filepath, $rootdir) = @_;
+
+    # Check whether the rootdir is specified as a shell variable.
+    if ($rootdir =~ m/^\$(\w*)/) {
+
+        my $rootname = $1;
+
+        # Strip off the root directory with the following regexp that
+        # avoids the problem of $rootdir being interpolated to a scalar variable
+        # name...
+        #$filepath =~ s:^\$$rootname::;
+
+        # The CCSM scripts are currently set up to expect the shell variable in the
+        # output file that contains the list of inputdata files.  So in this case
+        # do nothing.
+
+    }
+    else {
+        # Strip off the rootdir specified as a resolved pathname
+        $filepath =~ s:^$rootdir::;
+    }
+    return $filepath;
+}
+
+#-----------------------------------------------------------------------------------------------
+
+sub set_abs_filepath {
+
+# check whether the input filepath is an absolute path, and if it isn't then
+# prepend a root directory
+
+    my ($filepath, $rootdir) = @_;
+
+    # strip any leading/trailing whitespace
+    $filepath =~ s/^\s+//;
+    $filepath =~ s/\s+$//;
+    $rootdir  =~ s/^\s+//;
+    $rootdir  =~ s/\s+$//;
+
+    # strip any leading/trailing quotes
+    $filepath =~ s/^['"]+//;
+    $filepath =~ s/["']+$//;
+    $rootdir =~ s/^['"]+//;
+    $rootdir =~ s/["']+$//;
+
+    my $out = $filepath;
+    unless ( $filepath =~ /^\// ) {  # unless $filepath starts with a /
+        $out = "$rootdir/$filepath"; # prepend the root directory
+    }
+    return $out;
+}
+
+#-----------------------------------------------------------------------------------------------
+
+
+sub absolute_path {
+#
+# Convert a pathname into an absolute pathname, expanding any . or .. characters.
+# Assumes pathnames refer to a local filesystem.
+# Assumes the directory separator is "/".
+#
+  my $path = shift;
+  my $cwd = getcwd();  # current working directory
+  my $abspath;         # resulting absolute pathname
+
+# Strip off any leading or trailing whitespace.  (This pattern won't match if
+# there's embedded whitespace.
+  $path =~ s!^\s*(\S*)\s*$!$1!;
+
+# Convert relative to absolute path.
+
+  if ($path =~ m!^\.$!) {          # path is "."
+      return $cwd;
+  } elsif ($path =~ m!^\./!) {     # path starts with "./"
+      $path =~ s!^\.!$cwd!;
+  } elsif ($path =~ m!^\.\.$!) {   # path is ".."
+      $path = "$cwd/..";
+  } elsif ($path =~ m!^\.\./!) {   # path starts with "../"
+      $path = "$cwd/$path";
+  } elsif ($path =~ m!^[^/]!) {    # path starts with non-slash character
+      $path = "$cwd/$path";
+  }
+
+  my ($dir, @dirs2);
+  my @dirs = split "/", $path, -1;   # The -1 prevents split from stripping trailing nulls
+                                     # This enables correct processing of the input "/".
+
+  # Remove any "" that are not leading.
+  for (my $i=0; $i<=$#dirs; ++$i) {
+      if ($i == 0 or $dirs[$i] ne "") {
+          push @dirs2, $dirs[$i];
+      }
+  }
+  @dirs = ();
+
+  # Remove any "."
+  foreach $dir (@dirs2) {
+      unless ($dir eq ".") {
+          push @dirs, $dir;
+      }
+  }
+  @dirs2 = ();
+
+  # Remove the "subdir/.." parts.
+  foreach $dir (@dirs) {
+    if ( $dir !~ /\.\./ ) {
+        push @dirs2, $dir;
+    } else {
+        pop @dirs2;   # remove previous dir when current dir is ..
+    }
+  }
+  if ($#dirs2 == 0 and $dirs2[0] eq "") { return "/"; }
+  $abspath = join '/', @dirs2;
+  return( $abspath );
+}
+
+#-------------------------------------------------------------------------------
+
+sub valid_option {
+
+    my ($val, @expect) = @_;
+    my ($expect);
+
+    $val =~ s/^\s+//;
+    $val =~ s/\s+$//;
+    foreach $expect (@expect) {
+        if ($val =~ /^$expect$/i) { return $expect; }
+    }
+    return undef;
+}
+
+#-------------------------------------------------------------------------------
+
+sub validate_use_case {
+
+    my $source = shift;   # text string declaring the source of the options being validated
+    my $opts   = shift;   # reference to hash that contains the options
+
+    my ($opt, $old, @expect);
+
+    # use_case
+    $opt = 'use_case';
+    if (defined $opts->{$opt}) {
+
+        # create the @expect array by listing the files in $use_case_dir
+        # and strip off the ".xml" part of the filename
+        @expect = ();
+        my @files = glob("$opts->{'use_case_dir'}/*.xml");
+        foreach my $file (@files) {
+            $file =~ m{.*/(.*)\.xml};
+            push @expect, $1;
+        }
+
+        $old = $opts->{$opt};
+        $opts->{$opt} = valid_option($old, @expect)
+            or die "$ProgName - ERROR: invalid value of $opt ($old) specified in $source\n".
+                   "expected one of: @expect\n";
+    }
+}
+
+#-------------------------------------------------------------------------------
+
+sub quote_string {
+    my $str = shift;
+    $str =~ s/^\s+//;
+    $str =~ s/\s+$//;
+    unless ($str =~ /^['"]/) {        #"'
+        $str = "\'$str\'";
+    }
+    return $str;
+}
+
+#-------------------------------------------------------------------------------
+
+sub version {
+# The version is found in CAM's ChangeLog file.
+# $cfgdir is set by the configure script to the name of its directory.
+
+    my ($cfgdir) = @_;
+
+    my $logfile = "$cfgdir/../doc/ChangeLog";
+
+    my $fh = IO::File->new($logfile, '<') or die "** $ProgName - ERROR: can't open ChangeLog file: $logfile\n";
+
+    while (my $line = <$fh>) {
+
+        if ($line =~ /^Tag name:\s*(\w+)/ ) {
+            print "$1\n";
+            last;
+        }
+    }
+
+}
+
+#-------------------------------------------------------------------------------

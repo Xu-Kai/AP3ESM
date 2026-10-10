@@ -1,0 +1,2 @@
+set_property(GLOBAL APPEND PROPERTY SUNWAY_HOST 
+	${CMAKE_CURRENT_LIST_DIR}/athread_core.c)

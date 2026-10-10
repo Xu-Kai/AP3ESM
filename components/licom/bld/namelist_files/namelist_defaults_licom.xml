@@ -1,0 +1,657 @@
+<?xml version="1.0"?>
+
+<namelist_defaults>
+
+<!---------------------------->
+<!-- domain_nml -->
+<!---------------------------->
+
+<clinic_distribution_type decomptype="cartesian" >cartesian</clinic_distribution_type>
+<clinic_distribution_type decomptype="spacecurve">spacecurve</clinic_distribution_type>
+<clinic_distribution_type decomptype="blockone"  >blockone</clinic_distribution_type>
+
+<clinic_distribution_type >balanced</clinic_distribution_type>
+<clinic_distribution_type ocn_grid="lt1v1" >balanced</clinic_distribution_type>
+<clinic_distribution_type ocn_grid="lt0.1v1">balanced</clinic_distribution_type>
+
+<tropic_distribution_type decomptype="cartesian" >cartesian</tropic_distribution_type>
+<tropic_distribution_type decomptype="spacecurve">spacecurve</tropic_distribution_type>
+<tropic_distribution_type decomptype="blockone"  >blockone</tropic_distribution_type>
+
+<ew_boundary_type>cyclic</ew_boundary_type>
+
+<ns_boundary_type>tripole</ns_boundary_type>
+<ns_boundary_type ocn_grid="tx1v1"  >tripole</ns_boundary_type>
+<ns_boundary_type ocn_grid="tx0.1v2">tripole</ns_boundary_type>
+<ns_boundary_type ocn_grid="lt1v1"  >tripole</ns_boundary_type>
+<ns_boundary_type ocn_grid="lt0.1v1">tripole</ns_boundary_type>
+
+<profile_barrier>.false.</profile_barrier>
+<num_iotasks>1</num_iotasks> 
+<lredirect_stdout>.true.</lredirect_stdout> 
+<luse_pointer_files>.true.</luse_pointer_files> 
+<luse_nf_64bit_offset>.true.</luse_nf_64bit_offset> 
+
+<!---------------------------->
+<!-- diag_nml -->
+<!---------------------------->
+
+<diag_msf>.false.</diag_msf>
+<diag_mth>.false.</diag_mth>
+<diag_bsf>.false.</diag_bsf>
+<diag_msf ocn_grid="lt1v1" >.true.</diag_msf>
+<diag_mth ocn_grid="lt1v1" >.true.</diag_mth>
+<diag_bsf ocn_grid="lt1v1" >.true.</diag_bsf>
+<simple_assm>.false.</simple_assm>
+
+<!---------------------------->
+<!-- tracer_nml -->
+<!---------------------------->
+
+<aft1>0.43</aft1>
+<ahv>0.3e-4</ahv>
+<gamma>20.0d0</gamma>
+<boundary_restore>2</boundary_restore> 
+<kvt ocn_grid="lt1v1">30</kvt>
+<kvt ocn_grid="lt0.1v1">55</kvt>
+<kvt ocn_grid="lt0.1v2">80</kvt>
+<kvt ocn_grid="lt0.1v3">80</kvt>
+<kvt ocn_grid="lt0.1k80">80</kvt>
+<kvt ocn_grid="licom2km">80</kvt>
+<kvt ocn_grid="lt0.05v2">80</kvt>
+<kvt ocn_grid="lt0.03v2">80</kvt>
+<kvt ocn_grid="lt0.02v2">80</kvt>
+<kvt ocn_grid="lt0.02v3">80</kvt>
+<kvt ocn_grid="lt0.01v2">80</kvt>
+<lfrc_core>.false.</lfrc_core>
+
+<!---------------------------->
+<!-- bclinc_nml -->
+<!---------------------------->
+
+<afc1>0.43</afc1>
+
+<!---------------------------->
+<!-- time_manager_nml -->
+<!---------------------------->
+
+<time_mix_freq>17</time_mix_freq>
+<time_mix_opt>none</time_mix_opt>
+<time_mix_opt ocn_grid="lt1v1"  >none</time_mix_opt>
+<time_mix_opt ocn_grid="lt0.1v1">none</time_mix_opt>
+
+<dt_option>seconds</dt_option>
+<dt_count > 23</dt_count>
+<dt_count ocn_onedim="TRUE">46</dt_count>
+<dt_count ocn_grid="gx3v7"  > 12</dt_count>
+<dt_count ocn_grid="gx3v7"  ocn_onedim="TRUE">24</dt_count>
+<dt_count ocn_grid="gx1v6"  > 23</dt_count>
+<dt_count ocn_grid="gx1v6"  ocn_onedim="TRUE">46</dt_count>
+<dt_count ocn_grid="lt1v1"  > 23</dt_count>
+<dt_count ocn_grid="lt1v1"  ocn_onedim="TRUE">46</dt_count>
+<dt_count ocn_grid="lt0.1v1"> 23</dt_count>
+<dt_count ocn_grid="lt0.1v1" ocn_onedim="TRUE">46</dt_count>
+<dt_count ocn_grid="tx1v1"  > 23</dt_count>
+<dt_count ocn_grid="tx0.1v2">576</dt_count>
+<dt_count ocn_grid="tx0.1v2" ocn_coupling="partial">500</dt_count>
+
+<IDTB ocn_grid="lt1v1">60</IDTB>
+<IDTC ocn_grid="lt1v1" >1200</IDTC>
+<IDTS ocn_grid="lt1v1" >1200</IDTS>
+<IDTB ocn_grid="lt0.1v1">10</IDTB>
+<IDTC ocn_grid="lt0.1v1" >60</IDTC>
+<IDTS ocn_grid="lt0.1v1" >60</IDTS>
+<IDTB ocn_grid="lt0.1v2">10</IDTB>
+<IDTB ocn_grid="lt0.1v3">10</IDTB>
+<IDTC ocn_grid="lt0.1v2" >60</IDTC>
+<IDTS ocn_grid="lt0.1v2" >60</IDTS>
+<IDTC ocn_grid="lt0.1v3" >60</IDTC>
+<IDTS ocn_grid="lt0.1v3" >60</IDTS>
+<IDTB ocn_grid="lt0.1k80">10</IDTB>
+<IDTC ocn_grid="lt0.1k80" >60</IDTC>
+<IDTS ocn_grid="lt0.1k80" >60</IDTS>
+<IDTB ocn_grid="licom2km">10</IDTB>
+<IDTC ocn_grid="licom2km" >60</IDTC>
+<IDTS ocn_grid="licom2km" >60</IDTS>
+<IDTB ocn_grid="lt0.05v2">2</IDTB>
+<IDTC ocn_grid="lt0.05v2" >10</IDTC>
+<IDTS ocn_grid="lt0.05v2" >10</IDTS>
+<IDTB ocn_grid="lt0.03v2">2</IDTB>
+<IDTC ocn_grid="lt0.03v2" >10</IDTC>
+<IDTS ocn_grid="lt0.03v2" >10</IDTS>
+<IDTB ocn_grid="lt0.02v2">2</IDTB>
+<IDTC ocn_grid="lt0.02v2" >10</IDTC>
+<IDTS ocn_grid="lt0.02v2" >10</IDTS>
+<IDTB ocn_grid="lt0.02v3">2</IDTB>
+<IDTC ocn_grid="lt0.02v3" >10</IDTC>
+<IDTS ocn_grid="lt0.02v3" >10</IDTS>
+<IDTB ocn_grid="lt0.01v2">2</IDTB>
+<IDTC ocn_grid="lt0.01v2" >10</IDTC>
+<IDTS ocn_grid="lt0.01v2" >10</IDTS>
+
+<impcor>.true.</impcor>
+
+<laccel>.false.</laccel>
+
+<dtuxcel>1.0</dtuxcel>
+
+<allow_leapyear calendar="GREGORIAN">.true.</allow_leapyear> 
+<allow_leapyear>.false.</allow_leapyear>
+
+<date_separator>'-'</date_separator>
+
+<stop_option>nyear</stop_option>
+<stop_count>1000</stop_count>
+
+<fit_freq>1</fit_freq> 
+
+<!---------------------------->
+<!-- grid_nml -->
+<!---------------------------->
+
+<sfc_layer_opt>'varthick'</sfc_layer_opt>
+<sfc_layer_opt ocn_onedim="TRUE">'rigid'</sfc_layer_opt>
+
+<horiz_grid_opt>tripole</horiz_grid_opt>
+<horiz_grid_opt ocn_grid="lt1v1">tripole</horiz_grid_opt>
+<horiz_grid_opt ocn_grid="lt0.1v1">tripole</horiz_grid_opt>
+<vert_grid_opt >file</vert_grid_opt>
+
+<lremove_points topography_opt="file"      >.false.</lremove_points> 
+<lremove_points topography_opt="bathymetry">.true.</lremove_points> 
+
+<horiz_grid_file ocn_grid="gx3v7"  >ocn/pop/gx3v7/grid/horiz_grid_20030806.ieeer8</horiz_grid_file>
+<horiz_grid_file ocn_grid="gx1v6"  >ocn/pop/gx1v6/grid/horiz_grid_20010402.ieeer8</horiz_grid_file>
+<horiz_grid_file ocn_grid="lt1v1"  >ocn/licom/lt1v1/grid/lt1v1_horiz_grid.da</horiz_grid_file>
+<horiz_grid_file ocn_grid="lt0.1v1">ocn/licom/lt0.1v1/grid/lt0.1v1_horiz_grid.da</horiz_grid_file>
+<horiz_grid_file ocn_grid="lt0.1v2">ocn/licom/lt0.1v2/grid/lt0.1v2_horiz_grid.da</horiz_grid_file>
+<horiz_grid_file ocn_grid="lt0.1v3">ocn/licom/lt0.1v3/grid/lt0.1v3_horiz_grid.da</horiz_grid_file>
+<horiz_grid_file ocn_grid="lt0.1k80">ocn/licom/lt0.1k80/LICOM_Hor_Grid_3600X2302X80_tripole_omip_20250118.DATA</horiz_grid_file>
+<horiz_grid_file ocn_grid="licom2km">ocn/licom/lt0.1k80/LICOM_Hor_Grid_3600X2302X80_tripole_omip_20250118.DATA</horiz_grid_file>
+<horiz_grid_file ocn_grid="lt0.05v2">ocn/licom/lt0.05v2/grid/lt0.05v2_horiz_grid.da</horiz_grid_file>
+<horiz_grid_file ocn_grid="lt0.03v2">ocn/licom/lt0.03v2/grid/lt0.03v2_horiz_grid.da</horiz_grid_file>
+<horiz_grid_file ocn_grid="lt0.02v2">ocn/licom/lt0.02v2/grid/lt0.02v2_horiz_grid.da</horiz_grid_file>
+<horiz_grid_file ocn_grid="lt0.02v3">ocn/licom/lt0.02v3/grid/lt0.02v3_horiz_grid.da</horiz_grid_file>
+<horiz_grid_file ocn_grid="lt0.01v2">ocn/licom/lt0.01v2/grid/lt0.01v2_horiz_grid.da</horiz_grid_file>
+<horiz_grid_file ocn_grid="tx1v1"  >ocn/pop/tx1v1/grid/horiz_grid_20050510.ieeer8</horiz_grid_file>
+<horiz_grid_file ocn_grid="tx0.1v2">ocn/pop/tx0.1v2/grid/horiz_grid_200709.ieeer8</horiz_grid_file>
+
+<vert_grid_file ocn_grid="lt1v1"  >ocn/licom/lt1v1/grid/lt1v1_vert_grid.da</vert_grid_file>
+<vert_grid_file ocn_grid="lt0.1v1">ocn/licom/lt0.1v1/grid/lt0.1v1_vert_grid.da</vert_grid_file>
+<vert_grid_file ocn_grid="lt0.1v2">ocn/licom/lt0.1v2/grid/lt0.1v2_vert_grid.da</vert_grid_file>
+<vert_grid_file ocn_grid="lt0.1v3">ocn/licom/lt0.1v3/grid/lt0.1v3_vert_grid.da</vert_grid_file>
+<vert_grid_file ocn_grid="lt0.1k80">ocn/licom/lt0.1k80/depth_L80_20241227.da</vert_grid_file>
+<vert_grid_file ocn_grid="licom2km">ocn/licom/lt0.1k80/depth_L80_20241227.da</vert_grid_file>
+<vert_grid_file ocn_grid="lt0.05v2">ocn/licom/lt0.05v2/grid/lt0.05v2_vert_grid.da</vert_grid_file>
+<vert_grid_file ocn_grid="lt0.03v2">ocn/licom/lt0.03v2/grid/lt0.03v2_vert_grid.da</vert_grid_file>
+<vert_grid_file ocn_grid="lt0.02v2">ocn/licom/lt0.02v2/grid/lt0.02v2_vert_grid.da</vert_grid_file>
+<vert_grid_file ocn_grid="lt0.02v3">ocn/licom/lt0.02v3/grid/lt0.02v3_vert_grid.da</vert_grid_file>
+<vert_grid_file ocn_grid="lt0.01v2">ocn/licom/lt0.01v2/grid/lt0.01v2_vert_grid.da</vert_grid_file>
+
+<topography_file ocn_grid="gx1v6"  >ocn/pop/gx1v6/grid/topography_20090204.ieeei4</topography_file>
+<topography_file ocn_grid="lt1v1"  >ocn/licom/lt1v1/grid/lt1v1_topography.da</topography_file>
+<topography_file ocn_grid="lt0.1v1">ocn/licom/lt0.1v1/grid/lt0.1v1_topography.da</topography_file>
+<topography_file ocn_grid="lt0.1v2">ocn/licom/lt0.1v2/grid/lt0.1v2_topography.da</topography_file>
+<topography_file ocn_grid="lt0.1v3">ocn/licom/lt0.1v3/grid/lt0.1v3_topography.da</topography_file>
+<topography_file ocn_grid="lt0.1k80">ocn/licom/lt0.1k80/LICOM_Topo_3600X2302X80_tripole_omip_20250118.DATA</topography_file>
+<topography_file ocn_grid="licom2km">ocn/licom/lt0.1k80/LICOM_Topo_3600X2302X80_tripole_omip_20250118.DATA</topography_file>
+<topography_file ocn_grid="lt0.05v2">ocn/licom/lt0.05v2/grid/lt0.05v2_topography.da</topography_file>
+<topography_file ocn_grid="lt0.03v2">ocn/licom/lt0.03v2/grid/lt0.03v2_topography.da</topography_file>
+<topography_file ocn_grid="lt0.02v2">ocn/licom/lt0.02v2/grid/lt0.02v2_topography.da</topography_file>
+<topography_file ocn_grid="lt0.02v3">ocn/licom/lt0.02v3/grid/lt0.02v3_topography.da</topography_file>
+<topography_file ocn_grid="lt0.01v2">ocn/licom/lt0.01v2/grid/lt0.01v2_topography.da</topography_file>
+<topography_file ocn_grid="gx3v7"  >ocn/pop/gx3v7/grid/topography_20100105.ieeei4</topography_file>
+<topography_file ocn_grid="tx1v1"  >ocn/pop/tx1v1/grid/topography_20050510.ieeei4</topography_file>
+<topography_file ocn_grid="tx0.1v2">ocn/pop/tx0.1v2/grid/topography_km62_201209.ieeei4</topography_file>
+
+<basin_grid_file ocn_grid="lt1v1"  >ocn/licom/lt1v1/grid/Basin.data</basin_grid_file>
+<basin_grid_file ocn_grid="lt0.1v1">ocn/licom/lt0.1v1/grid/Basin.data</basin_grid_file>
+<basin_grid_file ocn_grid="lt0.1v2">ocn/licom/lt0.1v2/grid/Basin.data</basin_grid_file>
+<basin_grid_file ocn_grid="lt0.1v3">ocn/licom/lt0.1v3/grid/Basin.data</basin_grid_file>
+<basin_grid_file ocn_grid="lt0.1k80">ocn/licom/lt0.1k80/LICOM_Basin_3600X2302X80_tripole_omip_20250118.DATA</basin_grid_file>
+<basin_grid_file ocn_grid="licom2km">ocn/licom/lt0.1k80/LICOM_Basin_3600X2302X80_tripole_omip_20250118.DATA</basin_grid_file>
+<basin_grid_file ocn_grid="lt0.05v2">ocn/licom/lt0.05v2/grid/Basin.data</basin_grid_file>
+<basin_grid_file ocn_grid="lt0.03v2">ocn/licom/lt0.03v2/grid/Basin.data</basin_grid_file>
+<basin_grid_file ocn_grid="lt0.02v2">ocn/licom/lt0.02v2/grid/Basin.data</basin_grid_file>
+<basin_grid_file ocn_grid="lt0.02v3">ocn/licom/lt0.02v3/grid/Basin.data</basin_grid_file>
+<basin_grid_file ocn_grid="lt0.01v2">ocn/licom/lt0.01v2/grid/Basin.data</basin_grid_file>
+
+<region_mask_file >ocn/pop/gx1v6/grid/region_mask_20090205.ieeei4</region_mask_file> 
+<region_mask_file ocn_grid="gx3v7"  >ocn/pop/gx3v7/grid/region_mask_20090831.ieeei4</region_mask_file>
+<region_mask_file ocn_grid="gx1v6"  >ocn/pop/gx1v6/grid/region_mask_20090205.ieeei4</region_mask_file> 
+<region_mask_file ocn_grid="lt1v1"  >ocn/pop/gx1v6/grid/region_mask_20090205.ieeei4</region_mask_file> 
+<region_mask_file ocn_grid="lt0.1v1">ocn/pop/gx1v6/grid/region_mask_20090205.ieeei4</region_mask_file> 
+<region_mask_file ocn_grid="tx1v1"  >ocn/pop/tx1v1/grid/region_mask_20050510.ieeei4</region_mask_file>
+<region_mask_file ocn_grid="tx0.1v2">ocn/pop/tx0.1v2/grid/region_mask_20080702.ieeei4</region_mask_file>
+
+<kmt_kmin>3</kmt_kmin>
+
+<partial_bottom_cells>.false.</partial_bottom_cells>
+<partial_bottom_cells ocn_grid="tx0.1v2">.true.</partial_bottom_cells>
+
+<bottom_cell_file ocn_grid="tx0.1v2">ocn/pop/tx0.1v2/grid/dzbc_km62_201209.ieeer8</bottom_cell_file>
+
+<n_topo_smooth>0</n_topo_smooth>
+
+<flat_bottom>.false.</flat_bottom>
+<flat_bottom iden_cols="TRUE">.true.</flat_bottom>
+
+<l1Ddyn>.false.</l1Ddyn>
+<l1Ddyn ocn_onedim="TRUE">.true.</l1Ddyn>
+
+<!---------------------------->
+<!-- init_ts_nml -->
+<!---------------------------->
+
+<init_ts_file ocn_grid="gx3v7">  ocn/pop/gx3v7/ic/ts_PHC2_jan_ic_gx3v7_20100107.ieeer8</init_ts_file>
+<init_ts_file ocn_grid="gx1v6">  ocn/pop/gx1v6/ic/ts_PHC2_jan_ic_gx1v6_20090205.ieeer8</init_ts_file>
+<init_ts_file ocn_grid="lt1v1">  ocn/licom/lt1v1/ic/initialTS.nc</init_ts_file>
+<init_ts_file ocn_grid="lt0.1v1">ocn/licom/lt0.1v1/ic/initialTS.nc</init_ts_file>
+<init_ts_file ocn_grid="lt0.1v2">ocn/licom/lt0.1v2/ic/initialTS.nc</init_ts_file>
+<init_ts_file ocn_grid="lt0.1v3">ocn/licom/lt0.1v2/ic/initialTS.nc</init_ts_file>
+<init_ts_file ocn_grid="lt0.1k80">ocn/licom/lt0.1k80/ic/initialTS.nc</init_ts_file>
+<init_ts_file ocn_grid="licom2km">ocn/licom/lt0.1k80/ic/initialTS.nc</init_ts_file>
+<init_ts_file ocn_grid="lt0.05v2">ocn/licom/lt0.05v2/ic/initialTS.nc</init_ts_file>
+<init_ts_file ocn_grid="lt0.03v2">ocn/licom/lt0.03v2/ic/initialTS.nc</init_ts_file>
+<init_ts_file ocn_grid="lt0.02v2">ocn/licom/lt0.02v2/ic/initialTS.nc</init_ts_file>
+<init_ts_file ocn_grid="lt0.02v3">ocn/licom/lt0.02v2/ic/initialTS.nc</init_ts_file>
+<init_ts_file ocn_grid="lt0.01v2">ocn/licom/lt0.02v2/ic/initialTS.nc</init_ts_file>
+<init_ts_file ocn_grid="tx1v1">  ocn/pop/tx1v1/ic/ts_jan_ic_20050510.ieeer8</init_ts_file>
+<init_ts_file ocn_grid="tx0.1v2">ocn/pop/tx0.1v2/ic/ts_WOA13v2_jan_ic_tx0.1v2_62L_20171222.ieeer8</init_ts_file>
+
+<init_ts_suboption>'null'</init_ts_suboption>
+
+<init_ts_outfile_fmt>'nc'</init_ts_outfile_fmt>
+<init_ts_outfile_fmt ocn_grid="tx0.1v2">'bin'</init_ts_outfile_fmt>
+
+<!---------------------------->
+<!-- bsf_diagnostic_nml -->
+<!---------------------------->
+
+<ldiag_bsf>.true.</ldiag_bsf>
+<ldiag_bsf ocn_onedim="TRUE" >.false.</ldiag_bsf>
+<ldiag_bsf ocn_grid="tx1v1"  >.false.</ldiag_bsf>
+<ldiag_bsf ocn_grid="tx0.1v2">.false.</ldiag_bsf>
+
+<!---------------------------->
+<!-- restart_nml -->
+<!---------------------------->
+
+<restart_freq_opt>'nyear'</restart_freq_opt> 
+<restart_freq>100000</restart_freq>
+<restart_start_opt>'nstep'</restart_start_opt>
+<restart_start> 0</restart_start>
+<restart_fmt>'nc'</restart_fmt>
+<leven_odd_on>.false.</leven_odd_on> 
+<even_odd_freq>100000</even_odd_freq>
+<pressure_correction>.false.</pressure_correction>
+
+<!---------------------------->
+<!-- history_nml -->
+<!---------------------------->
+
+<history_freq_opt>'never'</history_freq_opt>
+<history_freq>1</history_freq>
+<history_fmt>'nc'</history_fmt>
+
+<!---------------------------->
+<!-- tidal_nml -->
+<!---------------------------->
+
+<ltidal_mixing>.true.</ltidal_mixing>
+
+<tidal_energy_file ocn_grid="lt1v1"  >ocn/licom/lt1v1/forcing/tidal_energy.nc  </tidal_energy_file>
+<tidal_energy_file ocn_grid="lt0.1v1">ocn/licom/lt0.1v1/forcing/tidal_energy.nc</tidal_energy_file>
+<tidal_energy_file ocn_grid="lt0.1v2">ocn/licom/lt0.1v2/forcing/tidal_energy.nc</tidal_energy_file>
+<tidal_energy_file ocn_grid="lt0.1v3">ocn/licom/lt0.1v2/forcing/tidal_energy.nc</tidal_energy_file>
+<tidal_energy_file ocn_grid="lt0.05v2">ocn/licom/lt0.05v2/forcing/tidal_energy.nc</tidal_energy_file>
+<tidal_energy_file ocn_grid="lt0.03v2">ocn/licom/lt0.03v2/forcing/tidal_energy.nc</tidal_energy_file>
+<tidal_energy_file ocn_grid="lt0.02v2">ocn/licom/lt0.02v2/forcing/tidal_energy.nc</tidal_energy_file>
+<tidal_energy_file ocn_grid="lt0.02v3">ocn/licom/lt0.02v2/forcing/tidal_energy.nc</tidal_energy_file>
+<tidal_energy_file ocn_grid="lt0.01v2">ocn/licom/lt0.01v2/forcing/tidal_energy.nc</tidal_energy_file>
+<tidal_energy_file ocn_grid="lt0.1k80">ocn/licom/lt0.1k80/tidal_energy_licom_tripole_3600X2302X80_omip_db_20240921.nc</tidal_energy_file>
+<tidal_energy_file ocn_grid="licom2km">ocn/licom/lt0.1k80/tidal_energy_licom_tripole_3600X2302X80_omip_db_20240921.nc</tidal_energy_file>
+
+<tidal_energy_file_fmt>'nc'</tidal_energy_file_fmt>
+
+<local_mixing_fraction>0.33</local_mixing_fraction>
+<mixing_efficiency>0.2</mixing_efficiency>
+<vertical_decay_scale>500.0</vertical_decay_scale>
+<tidal_mix_max>1.0d-2</tidal_mix_max>
+
+<!---------------------------->
+<!-- advect_nml -->
+<!---------------------------->
+
+<tadvect_ctype >upwind3</tadvect_ctype>
+<tadvect_ctype ocn_grid="gx3v7"  >upwind3</tadvect_ctype>
+<tadvect_ctype ocn_grid="gx1v6"  >upwind3</tadvect_ctype>
+<tadvect_ctype ocn_grid="lt1v1"  >upwind3</tadvect_ctype>
+<tadvect_ctype ocn_grid="lt0.1v1">upwind3</tadvect_ctype>
+<tadvect_ctype ocn_grid="tx1v1"  >centered</tadvect_ctype>
+<tadvect_ctype ocn_grid="tx0.1v2">centered</tadvect_ctype>
+
+<adv_momentum>"centered"</adv_momentum>
+<adv_tracer>"tspas"</adv_tracer>
+
+<!---------------------------->
+<!-- hmix_nml -->
+<!---------------------------->
+
+<hmix_momentum_choice ocn_grid="gx3v7"  >'anis'</hmix_momentum_choice>
+<hmix_momentum_choice ocn_grid="gx1v6"  >'anis'</hmix_momentum_choice>
+<hmix_momentum_choice ocn_grid="lt1v1"  >'del2'</hmix_momentum_choice>
+<hmix_momentum_choice ocn_grid="lt0.1v1">'del2'</hmix_momentum_choice>
+<hmix_momentum_choice ocn_grid="lt0.1v2">'del2'</hmix_momentum_choice>
+<hmix_momentum_choice ocn_grid="lt0.1v3">'del2'</hmix_momentum_choice>
+<hmix_momentum_choice ocn_grid="lt0.1k80">'del2'</hmix_momentum_choice>
+<hmix_momentum_choice ocn_grid="licom2km">'del2'</hmix_momentum_choice>
+<hmix_momentum_choice ocn_grid="lt0.05v2">'del2'</hmix_momentum_choice>
+<hmix_momentum_choice ocn_grid="lt0.03v2">'del2'</hmix_momentum_choice>
+<hmix_momentum_choice ocn_grid="lt0.02v2">'del2'</hmix_momentum_choice>
+<hmix_momentum_choice ocn_grid="lt0.02v3">'del2'</hmix_momentum_choice>
+<hmix_momentum_choice ocn_grid="lt0.01v2">'del2'</hmix_momentum_choice>
+<hmix_momentum_choice ocn_grid="tx1v1"  >'del4'</hmix_momentum_choice>
+<hmix_momentum_choice ocn_grid="tx0.1v2">'del4'</hmix_momentum_choice>
+
+<hmix_tracer_choice ocn_grid="gx3v7"   >'gent'</hmix_tracer_choice>
+<hmix_tracer_choice ocn_grid="gx1v6"   >'gent'</hmix_tracer_choice>
+<hmix_tracer_choice ocn_grid="lt1v1"   >'del2'</hmix_tracer_choice>
+<hmix_tracer_choice ocn_grid="lt0.1v1" >'del2'</hmix_tracer_choice>
+<hmix_tracer_choice ocn_grid="lt0.1v2" >'del2'</hmix_tracer_choice>
+<hmix_tracer_choice ocn_grid="lt0.1v3" >'del2'</hmix_tracer_choice>
+<hmix_tracer_choice ocn_grid="lt0.1k80" >'del2'</hmix_tracer_choice>
+<hmix_tracer_choice ocn_grid="licom2km" >'del2'</hmix_tracer_choice>
+<hmix_tracer_choice ocn_grid="lt0.05v2" >'del2'</hmix_tracer_choice>
+<hmix_tracer_choice ocn_grid="lt0.03v2" >'del2'</hmix_tracer_choice>
+<hmix_tracer_choice ocn_grid="lt0.02v2" >'del2'</hmix_tracer_choice>
+<hmix_tracer_choice ocn_grid="lt0.02v3" >'del2'</hmix_tracer_choice>
+<hmix_tracer_choice ocn_grid="lt0.01v2" >'del2'</hmix_tracer_choice>
+<hmix_tracer_choice ocn_grid="tx1v1"   >'del4'</hmix_tracer_choice>
+<hmix_tracer_choice ocn_grid="tx0.1v2" >'del4'</hmix_tracer_choice>
+
+<lsubmesoscale_mixing >.false.</lsubmesoscale_mixing>
+<lsubmesoscale_mixing ocn_grid="gx3v7"  >.true.</lsubmesoscale_mixing>
+<lsubmesoscale_mixing ocn_grid="gx1v6"  >.true.</lsubmesoscale_mixing>
+<lsubmesoscale_mixing ocn_grid="lt1v1"  >.false.</lsubmesoscale_mixing>
+<lsubmesoscale_mixing ocn_grid="lt0.1v1">.false.</lsubmesoscale_mixing>
+<lsubmesoscale_mixing ocn_grid="tx1v1"  >.false.</lsubmesoscale_mixing>
+<lsubmesoscale_mixing ocn_grid="tx0.1v2">.false.</lsubmesoscale_mixing>
+
+<!---------------------------->
+<!-- gm90_nml -->
+<!---------------------------->
+
+<config_use_gm90 >.false.</config_use_gm90>
+<config_use_gm90  ocn_grid="lt1v1"  >.true. </config_use_gm90>
+<config_use_gm90  ocn_grid="lt0.1v1">.false.</config_use_gm90>
+
+<config_use_ldd97 >.false.</config_use_ldd97>
+<config_use_ldd97 ocn_grid="lt1v1"  >.true. </config_use_ldd97>
+<config_use_ldd97 ocn_grid="lt0.1v1">.false.</config_use_ldd97>
+
+<gm90_type_bf   >.false.</gm90_type_bf>
+<gm90_type_bf   ocn_grid="lt1v1"  >.true. </gm90_type_bf>
+<gm90_type_bf   ocn_grid="lt0.1v1">.false.</gm90_type_bf>
+
+<slmxr>100.0D0</slmxr>
+
+<!---------------------------->
+<!-- sss_nml -->
+<!---------------------------->
+
+<lsss_restoring>.true.</lsss_restoring>
+<sss_file ocn_grid="lt1v1"  >ocn/licom/lt1v1/ic/sss_phc3_monthly_3d.nc  </sss_file>
+<sss_file ocn_grid="lt0.1v1">ocn/licom/lt0.1v1/ic/sss_phc3_monthly_3d.nc</sss_file>
+<sss_file ocn_grid="lt0.1v2">ocn/licom/lt0.1v2/ic/sss_phc3_monthly_3d.nc</sss_file>
+<sss_file ocn_grid="lt0.1v3">ocn/licom/lt0.1v2/ic/sss_phc3_monthly_3d.nc</sss_file>
+<sss_file ocn_grid="lt0.1k80">ocn/licom/lt0.1k80/sss_month_phc3_tripole_3600X2302X80_omip_db_20240921.nc</sss_file>
+<sss_file ocn_grid="licom2km">ocn/licom/lt0.1k80/sss_month_phc3_tripole_3600X2302X80_omip_db_20240921.nc</sss_file>
+<sss_file ocn_grid="lt0.05v2">ocn/licom/lt0.05v2/ic/sss_phc3_monthly_3d.nc</sss_file>
+<sss_file ocn_grid="lt0.03v2">ocn/licom/lt0.03v2/ic/sss_phc3_monthly_3d.nc</sss_file>
+<sss_file ocn_grid="lt0.02v2">ocn/licom/lt0.02v2/ic/sss_phc3_monthly_3d.nc</sss_file>
+<sss_file ocn_grid="lt0.02v3">ocn/licom/lt0.02v2/ic/sss_phc3_monthly_3d.nc</sss_file>
+<sss_file ocn_grid="lt0.01v2">ocn/licom/lt0.01v2/ic/sss_phc3_monthly_3d.nc</sss_file>
+
+<!---------------------------->
+<!-- state_nml -->
+<!---------------------------->
+
+<state_file>'internal'</state_file>
+<state_file ocn_grid="lt1v1"  >ocn/licom/lt1v1/ic/dncoef.h1  </state_file>
+<state_file ocn_grid="lt0.1v1">ocn/licom/lt0.1v1/ic/dncoef.h1</state_file>
+<state_file ocn_grid="lt0.1v2">ocn/licom/lt0.1v2/ic/dncoef.h1</state_file>
+<state_file ocn_grid="lt0.1v3">ocn/licom/lt0.1v3/ic/dncoef.h1</state_file>
+<state_file ocn_grid="lt0.1k80">ocn/licom/lt0.1k80/dncoef_L80_20241227.h1</state_file>
+<state_file ocn_grid="licom2km">ocn/licom/lt0.1k80/dncoef_L80_20241227.h1</state_file>
+<state_file ocn_grid="lt0.05v2">ocn/licom/lt0.05v2/ic/dncoef.h1</state_file>
+<state_file ocn_grid="lt0.03v2">ocn/licom/lt0.03v2/ic/dncoef.h1</state_file>
+<state_file ocn_grid="lt0.02v2">ocn/licom/lt0.02v2/ic/dncoef.h1</state_file>
+<state_file ocn_grid="lt0.02v3">ocn/licom/lt0.02v3/ic/dncoef.h1</state_file>
+<state_file ocn_grid="lt0.01v2">ocn/licom/lt0.01v2/ic/dncoef.h1</state_file>
+
+<!---------------------------->
+<!-- baroclinic_nml -->
+<!---------------------------->
+
+<reset_to_freezing>.false.</reset_to_freezing>
+
+<!---------------------------->
+<!-- ice_nml -->
+<!---------------------------->
+
+<ice_freq_opt>'coupled'</ice_freq_opt>
+
+<ice_freq>100000</ice_freq>
+
+<kmxice>1</kmxice>
+
+<lactive_ice>.true.</lactive_ice>
+<lactive_ice ocn_ice_forcing="inactive">.false.</lactive_ice>
+
+<!---------------------------->
+<!--sw_absorption_nml -->
+<!---------------------------->
+
+<lsw_absorption>.true.</lsw_absorption>
+<sw_absorption_type>chlorophyll</sw_absorption_type>
+<sw_absorption_type ocn_onedim="TRUE">jerlov</sw_absorption_type>
+<chl_file_fmt>nc</chl_file_fmt>
+<jerlov_water_type>1</jerlov_water_type>
+
+<chl_option ocn_chl_type="prognostic">model</chl_option>
+<chl_option ocn_chl_type="diagnostic">file</chl_option>
+<chl_option>file</chl_option>
+
+<chl_filename ocn_grid="gx3v7"  >ocn/pop/gx3v7/forcing/chl_mm_SeaWiFs97-01_20031205.ieeer8</chl_filename>
+<chl_filename ocn_grid="gx1v6"  >ocn/pop/gx1v6/forcing/chl_filled_20061230.ieeer8</chl_filename>
+<chl_filename ocn_grid="lt1v1"  >ocn/licom/lt1v1/forcing/chl_monthly.nc</chl_filename>
+<chl_filename ocn_grid="lt0.1v1">ocn/licom/lt0.1v1/forcing/chl_monthly.nc</chl_filename>
+<chl_filename ocn_grid="lt0.1v2">ocn/licom/lt0.1v2/forcing/chl_monthly.nc</chl_filename>
+<chl_filename ocn_grid="lt0.1v3">ocn/licom/lt0.1v2/forcing/chl_monthly.nc</chl_filename>
+<chl_filename ocn_grid="lt0.1k80">ocn/licom/lt0.1k80/chl_clim_monthly_tripole_3600X2302X80_omip_db_20240921.nc</chl_filename>
+<chl_filename ocn_grid="licom2km">ocn/licom/lt0.1k80/chl_clim_monthly_tripole_3600X2302X80_omip_db_20240921.nc</chl_filename>
+<chl_filename ocn_grid="lt0.05v2">ocn/licom/lt0.05v2/forcing/chl_monthly.nc</chl_filename>
+<chl_filename ocn_grid="lt0.03v2">ocn/licom/lt0.03v2/forcing/chl_monthly.nc</chl_filename>
+<chl_filename ocn_grid="lt0.02v2">ocn/licom/lt0.02v2/forcing/chl_monthly.nc</chl_filename>
+<chl_filename ocn_grid="lt0.02v3">ocn/licom/lt0.02v2/forcing/chl_monthly.nc</chl_filename>
+<chl_filename ocn_grid="lt0.01v2">ocn/licom/lt0.01v2/forcing/chl_monthly.nc</chl_filename>
+<chl_filename ocn_grid="tx1v1"  >ocn/pop/tx1v1/forcing/chl_filled_tx1v1_20090701.ieeer8</chl_filename>
+<chl_filename ocn_grid="tx0.1v2">ocn/pop/tx0.1v2/forcing/chlorophyll_1998-2003_monthly_20080418.ieeer8</chl_filename>
+
+
+<!---------------------------->
+<!--coupled_nml -->
+<!---------------------------->
+
+<qsw_distrb_opt ocn_coupling="partial">const</qsw_distrb_opt>
+<qsw_distrb_opt ocn_coupling="full"   >const</qsw_distrb_opt>
+<qsw_distrb_opt ocn_grid="gx1v6" ocn_coupling="partial">cosz</qsw_distrb_opt>
+<qsw_distrb_opt ocn_grid="gx1v6" ocn_coupling="full"   >cosz</qsw_distrb_opt>
+<qsw_distrb_opt ocn_grid="lt1v1" ocn_coupling="partial">const</qsw_distrb_opt>
+<qsw_distrb_opt ocn_grid="lt1v1" ocn_coupling="full"   >const</qsw_distrb_opt>
+<qsw_distrb_opt ocn_grid="lt0.1v1" ocn_coupling="partial">const</qsw_distrb_opt>
+<qsw_distrb_opt ocn_grid="lt0.1v1" ocn_coupling="full"   >const</qsw_distrb_opt>
+
+<qsw_distrb_opt >const</qsw_distrb_opt> 
+<qsw_distrb_opt ocn_grid="gx3v7"  >cosz</qsw_distrb_opt>   
+<qsw_distrb_opt ocn_grid="tx1v1"  >const</qsw_distrb_opt>
+<qsw_distrb_opt ocn_grid="tx0.1v2">const</qsw_distrb_opt> 
+<qsw_distrb_opt ocn_grid="lt1v1"  >const</qsw_distrb_opt> 
+<qsw_distrb_opt ocn_grid="lt0.1v1">const</qsw_distrb_opt> 
+
+<!---------------------------->
+<!--context_nml -->
+<!---------------------------->
+
+<lcoupled>.true.</lcoupled>
+<lccsm>.true.</lccsm>
+<b4b_flag>.false.</b4b_flag>
+
+<lccsm_control_compatible >.false.</lccsm_control_compatible> 
+<lccsm_control_compatible ocn_grid="gx3v7"  >.false.</lccsm_control_compatible> 
+<lccsm_control_compatible ocn_grid="gx1v6"  >.false.</lccsm_control_compatible> 
+<lccsm_control_compatible ocn_grid="lt1v1"  >.false.</lccsm_control_compatible> 
+<lccsm_control_compatible ocn_grid="lt0.1v1">.false.</lccsm_control_compatible> 
+<lccsm_control_compatible ocn_grid="tx1v1"  >.false.</lccsm_control_compatible> 
+<lccsm_control_compatible ocn_grid="tx0.1v2">.false.</lccsm_control_compatible> 
+
+<!----------------------------------->
+<!--derived - thare are temporary --->
+<!--names for variables with the  --->
+<!--same name in multiple groups  --->
+<!----------------------------------->
+
+<lauto_hmix&hmix_del2u_nml >.false.</lauto_hmix&hmix_del2u_nml>
+<lauto_hmix&hmix_del2u_nml ocn_grid="gx3v7"  >.false.</lauto_hmix&hmix_del2u_nml> 
+<lauto_hmix&hmix_del2u_nml ocn_grid="gx1v6"  >.false.</lauto_hmix&hmix_del2u_nml> 
+<lauto_hmix&hmix_del2u_nml ocn_grid="lt1v1"  >.false.</lauto_hmix&hmix_del2u_nml> 
+<lauto_hmix&hmix_del2u_nml ocn_grid="lt0.1v1">.false.</lauto_hmix&hmix_del2u_nml> 
+<lauto_hmix&hmix_del2u_nml ocn_grid="tx1v1"  >.true.</lauto_hmix&hmix_del2u_nml> 
+<lauto_hmix&hmix_del2u_nml ocn_grid="tx0.1v2">.true.</lauto_hmix&hmix_del2u_nml> 
+
+<lauto_hmix&hmix_del2t_nml >.false.</lauto_hmix&hmix_del2t_nml> 
+<lauto_hmix&hmix_del2t_nml ocn_grid="gx3v7"  >.false.</lauto_hmix&hmix_del2t_nml> 
+<lauto_hmix&hmix_del2t_nml ocn_grid="gx1v6"  >.false.</lauto_hmix&hmix_del2t_nml> 
+<lauto_hmix&hmix_del2t_nml ocn_grid="lt1v1"  >.false.</lauto_hmix&hmix_del2t_nml> 
+<lauto_hmix&hmix_del2t_nml ocn_grid="lt0.1v1">.false.</lauto_hmix&hmix_del2t_nml> 
+<lauto_hmix&hmix_del2t_nml ocn_grid="tx1v1"  >.false.</lauto_hmix&hmix_del2t_nml> 
+<lauto_hmix&hmix_del2t_nml ocn_grid="tx0.1v2">.false.</lauto_hmix&hmix_del2t_nml> 
+
+<lauto_hmix&hmix_del4u_nml >.false.</lauto_hmix&hmix_del4u_nml> 
+<lauto_hmix&hmix_del4u_nml ocn_grid="gx3v7"  >.false.</lauto_hmix&hmix_del4u_nml> 
+<lauto_hmix&hmix_del4u_nml ocn_grid="gx1v6"  >.false.</lauto_hmix&hmix_del4u_nml> 
+<lauto_hmix&hmix_del4u_nml ocn_grid="lt1v1"  >.false.</lauto_hmix&hmix_del4u_nml> 
+<lauto_hmix&hmix_del4u_nml ocn_grid="lt0.1v1">.false.</lauto_hmix&hmix_del4u_nml> 
+<lauto_hmix&hmix_del4u_nml ocn_grid="tx1v1"  >.false.</lauto_hmix&hmix_del4u_nml> 
+<lauto_hmix&hmix_del4u_nml ocn_grid="tx0.1v2">.false.</lauto_hmix&hmix_del4u_nml> 
+
+<lauto_hmix&hmix_del4t_nml >.false.</lauto_hmix&hmix_del4t_nml> 
+<lauto_hmix&hmix_del4t_nml ocn_grid="gx3v7"  >.false.</lauto_hmix&hmix_del4t_nml> 
+<lauto_hmix&hmix_del4t_nml ocn_grid="gx1v6"  >.false.</lauto_hmix&hmix_del4t_nml> 
+<lauto_hmix&hmix_del4t_nml ocn_grid="lt1v1"  >.false.</lauto_hmix&hmix_del4t_nml> 
+<lauto_hmix&hmix_del4t_nml ocn_grid="lt0.1v1">.false.</lauto_hmix&hmix_del4t_nml> 
+<lauto_hmix&hmix_del4t_nml ocn_grid="tx1v1"  >.false.</lauto_hmix&hmix_del4t_nml> 
+<lauto_hmix&hmix_del4t_nml ocn_grid="tx0.1v2">.false.</lauto_hmix&hmix_del4t_nml> 
+
+
+<lvariable_hmix&hmix_del2u_nml >.true.</lvariable_hmix&hmix_del2u_nml> 
+<lvariable_hmix&hmix_del2u_nml ocn_grid="gx3v7"  >.false.</lvariable_hmix&hmix_del2u_nml> 
+<lvariable_hmix&hmix_del2u_nml ocn_grid="gx1v6"  >.false.</lvariable_hmix&hmix_del2u_nml> 
+<lvariable_hmix&hmix_del2u_nml ocn_grid="lt1v1"  >.true.</lvariable_hmix&hmix_del2u_nml> 
+<lvariable_hmix&hmix_del2u_nml ocn_grid="lt0.1v1">.true.</lvariable_hmix&hmix_del2u_nml> 
+<lvariable_hmix&hmix_del2u_nml ocn_grid="tx1v1"  >.false.</lvariable_hmix&hmix_del2u_nml> 
+<lvariable_hmix&hmix_del2u_nml ocn_grid="tx0.1v2">.false.</lvariable_hmix&hmix_del2u_nml> 
+
+<lvariable_hmix&hmix_del2t_nml >.true.</lvariable_hmix&hmix_del2t_nml> 
+<lvariable_hmix&hmix_del2t_nml ocn_grid="gx3v7"  >.false.</lvariable_hmix&hmix_del2t_nml> 
+<lvariable_hmix&hmix_del2t_nml ocn_grid="gx1v6"  >.false.</lvariable_hmix&hmix_del2t_nml> 
+<lvariable_hmix&hmix_del2t_nml ocn_grid="lt1v1"  >.true.</lvariable_hmix&hmix_del2t_nml> 
+<lvariable_hmix&hmix_del2t_nml ocn_grid="lt0.1v1">.true.</lvariable_hmix&hmix_del2t_nml> 
+<lvariable_hmix&hmix_del2t_nml ocn_grid="tx1v1"  >.true.</lvariable_hmix&hmix_del2t_nml> 
+<lvariable_hmix&hmix_del2t_nml ocn_grid="tx0.1v2">.true.</lvariable_hmix&hmix_del2t_nml> 
+
+<lvariable_hmix&hmix_del4u_nml >.true.</lvariable_hmix&hmix_del4u_nml> 
+<lvariable_hmix&hmix_del4u_nml ocn_grid="gx3v7"  >.false.</lvariable_hmix&hmix_del4u_nml> 
+<lvariable_hmix&hmix_del4u_nml ocn_grid="gx1v6"  >.false.</lvariable_hmix&hmix_del4u_nml> 
+<lvariable_hmix&hmix_del4u_nml ocn_grid="lt1v1"  >.true.</lvariable_hmix&hmix_del4u_nml> 
+<lvariable_hmix&hmix_del4u_nml ocn_grid="lt0.1v1">.true.</lvariable_hmix&hmix_del4u_nml> 
+
+<lvariable_hmix&hmix_del4u_nml ocn_grid="tx1v1"  >.false.</lvariable_hmix&hmix_del4u_nml> 
+<lvariable_hmix&hmix_del4u_nml ocn_grid="tx0.1v2">.true.</lvariable_hmix&hmix_del4u_nml> 
+
+<lvariable_hmix&hmix_del4t_nml >.true.</lvariable_hmix&hmix_del4t_nml> 
+<lvariable_hmix&hmix_del4t_nml ocn_grid="gx3v7"  >.false.</lvariable_hmix&hmix_del4t_nml> 
+<lvariable_hmix&hmix_del4t_nml ocn_grid="gx1v6"  >.false.</lvariable_hmix&hmix_del4t_nml> 
+<lvariable_hmix&hmix_del4t_nml ocn_grid="lt1v1"  >.true.</lvariable_hmix&hmix_del4t_nml> 
+<lvariable_hmix&hmix_del4t_nml ocn_grid="lt0.1v1">.true.</lvariable_hmix&hmix_del4t_nml> 
+<lvariable_hmix&hmix_del4t_nml ocn_grid="tx1v1"  >.false.</lvariable_hmix&hmix_del4t_nml> 
+<lvariable_hmix&hmix_del4t_nml ocn_grid="tx0.1v2">.true.</lvariable_hmix&hmix_del4t_nml> 
+
+<am&hmix_del2u_nml ocn_grid="gx3v7"  >3.0e9</am&hmix_del2u_nml>
+<am&hmix_del2u_nml ocn_grid="gx1v6"  >0.5e8</am&hmix_del2u_nml>
+<am&hmix_del2u_nml ocn_grid="lt1v1"  >5400</am&hmix_del2u_nml>
+<am&hmix_del2u_nml ocn_grid="lt0.1v1">600</am&hmix_del2u_nml>
+<am&hmix_del2u_nml ocn_grid="lt0.1v2">600</am&hmix_del2u_nml>
+<am&hmix_del2u_nml ocn_grid="lt0.1v3">600</am&hmix_del2u_nml>
+<am&hmix_del2u_nml ocn_grid="lt0.1k80">600</am&hmix_del2u_nml>
+<am&hmix_del2u_nml ocn_grid="licom2km">600</am&hmix_del2u_nml>
+<am&hmix_del2u_nml ocn_grid="lt0.05v2">600</am&hmix_del2u_nml>
+<am&hmix_del2u_nml ocn_grid="lt0.03v2">600</am&hmix_del2u_nml>
+<am&hmix_del2u_nml ocn_grid="lt0.02v2">600</am&hmix_del2u_nml>
+<am&hmix_del2u_nml ocn_grid="lt0.02v3">600</am&hmix_del2u_nml>
+<am&hmix_del2u_nml ocn_grid="lt0.01v2">600</am&hmix_del2u_nml>
+<am&hmix_del2u_nml ocn_grid="tx1v1"  >0.5e8</am&hmix_del2u_nml>
+<am&hmix_del2u_nml ocn_grid="tx0.1v2">1.e8</am&hmix_del2u_nml>
+
+<ah&hmix_del2t_nml ocn_grid="gx3v7"  >1.0e7</ah&hmix_del2t_nml>
+<ah&hmix_del2t_nml ocn_grid="gx1v6"  >0.6e7</ah&hmix_del2t_nml>
+<ah&hmix_del2t_nml ocn_grid="lt1v1"  >5400</ah&hmix_del2t_nml>
+<ah&hmix_del2t_nml ocn_grid="lt0.1v1">600</ah&hmix_del2t_nml>
+<ah&hmix_del2t_nml ocn_grid="lt0.1v2">600</ah&hmix_del2t_nml>
+<ah&hmix_del2t_nml ocn_grid="lt0.1v3">600</ah&hmix_del2t_nml>
+<ah&hmix_del2t_nml ocn_grid="lt0.1k80">600</ah&hmix_del2t_nml>
+<ah&hmix_del2t_nml ocn_grid="licom2km">600</ah&hmix_del2t_nml>
+<ah&hmix_del2t_nml ocn_grid="lt0.05v2">600</ah&hmix_del2t_nml>
+<ah&hmix_del2t_nml ocn_grid="lt0.03v2">600</ah&hmix_del2t_nml>
+<ah&hmix_del2t_nml ocn_grid="lt0.02v2">600</ah&hmix_del2t_nml>
+<ah&hmix_del2t_nml ocn_grid="lt0.02v3">600</ah&hmix_del2t_nml>
+<ah&hmix_del2t_nml ocn_grid="lt0.01v2">600</ah&hmix_del2t_nml>
+<ah&hmix_del2t_nml ocn_grid="tx1v1"  >0.6e7</ah&hmix_del2t_nml>
+<ah&hmix_del2t_nml ocn_grid="tx0.1v2">1.e8</ah&hmix_del2t_nml>
+
+<am&hmix_del4u_nml ocn_grid="gx3v7"  >-0.6e20</am&hmix_del4u_nml>
+<am&hmix_del4u_nml ocn_grid="gx1v6"  >-0.6e20</am&hmix_del4u_nml>
+<am&hmix_del4u_nml ocn_grid="lt1v1"  >-2.8D+10</am&hmix_del4u_nml>
+<am&hmix_del4u_nml ocn_grid="lt0.1v1">-2.8D+10</am&hmix_del4u_nml>
+<am&hmix_del4u_nml ocn_grid="lt0.1v2">-2.8D+10</am&hmix_del4u_nml>
+<am&hmix_del4u_nml ocn_grid="lt0.1v3">-2.8D+10</am&hmix_del4u_nml>
+<am&hmix_del4u_nml ocn_grid="lt0.1k80">-2.8D+10</am&hmix_del4u_nml>
+<am&hmix_del4u_nml ocn_grid="licom2km">-2.8D+10</am&hmix_del4u_nml>
+<am&hmix_del4u_nml ocn_grid="lt0.05v2">-2.8D+10</am&hmix_del4u_nml>
+<am&hmix_del4u_nml ocn_grid="lt0.03v2">-2.8D+10</am&hmix_del4u_nml>
+<am&hmix_del4u_nml ocn_grid="lt0.02v2">-2.8D+10</am&hmix_del4u_nml>
+<am&hmix_del4u_nml ocn_grid="lt0.02v3">-2.8D+10</am&hmix_del4u_nml>
+<am&hmix_del4u_nml ocn_grid="lt0.01v2">-2.8D+10</am&hmix_del4u_nml>
+<am&hmix_del4u_nml ocn_grid="tx1v1"  >-0.6e20</am&hmix_del4u_nml>
+<am&hmix_del4u_nml ocn_grid="tx0.1v2">-27.0e17</am&hmix_del4u_nml>
+
+<ah&hmix_del4t_nml ocn_grid="gx3v7"  >-0.2e20</ah&hmix_del4t_nml>
+<ah&hmix_del4t_nml ocn_grid="gx1v6"  >-0.2e20</ah&hmix_del4t_nml>
+<ah&hmix_del4t_nml ocn_grid="lt1v1"  >-2.8D+10</ah&hmix_del4t_nml>
+<ah&hmix_del4t_nml ocn_grid="lt0.1v1">-2.8D+10</ah&hmix_del4t_nml>
+<ah&hmix_del4t_nml ocn_grid="lt0.1v2">-2.8D+10</ah&hmix_del4t_nml>
+<ah&hmix_del4t_nml ocn_grid="lt0.1v3">-2.8D+10</ah&hmix_del4t_nml>
+<ah&hmix_del4t_nml ocn_grid="lt0.1k80">-2.8D+10</ah&hmix_del4t_nml>
+<ah&hmix_del4t_nml ocn_grid="licom2km">-2.8D+10</ah&hmix_del4t_nml>
+<ah&hmix_del4t_nml ocn_grid="lt0.05v2">-2.8D+10</ah&hmix_del4t_nml>
+<ah&hmix_del4t_nml ocn_grid="lt0.03v2">-2.8D+10</ah&hmix_del4t_nml>
+<ah&hmix_del4t_nml ocn_grid="lt0.02v2">-2.8D+10</ah&hmix_del4t_nml>
+<ah&hmix_del4t_nml ocn_grid="lt0.02v3">-2.8D+10</ah&hmix_del4t_nml>
+<ah&hmix_del4t_nml ocn_grid="lt0.01v2">-2.8D+10</ah&hmix_del4t_nml>
+<ah&hmix_del4t_nml ocn_grid="tx1v1"  >-0.2e20</ah&hmix_del4t_nml>
+<ah&hmix_del4t_nml ocn_grid="tx0.1v2">-3.0e17</ah&hmix_del4t_nml>
+
+
+</namelist_defaults>
+

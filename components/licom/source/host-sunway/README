@@ -1,0 +1,30 @@
+2023/07/20 hx 
+
+fortran代码修改：
+1、energy中添加了flesh函数，用于刷新缓冲区，将结果立即输出在ocn.log中，减少调试时间
+2、work_mod 中部分变量修改为了全局变量，readyc.F90，upwell.F90中注释掉了对应的alloc、dealloc函数，我这边allocatable 数据在Fortran -> C存在问题，暂时用全局变量解决，之后修改 
+3、icesnowsw暂时不启用，还没有把SIMD版本用宏定义分开，80核下数据量较少，满足SIMD对界要求部分从核将没有任务，16核下icesnowsw可以正确运行
+4、licom_drv、tracer.F90部分修改以添加从核代码
+
+Athread代码：
+1、添加了目录host-sunway存放Athread主核代码，athread_core中实现了对界和不对界两种分割数据给从核的函数，以及对从核函数的初始化等
+2、sunway目录下添加了icesnowsw.c,tracersw.c,upwellsw.c
+
+
+2023/07/24 hx
+
+fortran代码修改：
+1、tracer_mod 中at, buf_mod中ifrac改成全局变量，原因同上，之后进行修改。（这两个变量虽然是allocatalbe，原始代码里也是按全局变量使用的）
+2、tracer.F90常规修改，
+
+Athread代码： 
+1、添加了tracer5_cu_slave.c tracer6_cu_slave.c tracer7_cu_slave.c invtirtsw.c四个文件，其中tracer7_cu_slave.c包含了cuda内核中tracer7和tracer8的部分。tracer5和tracer6结尾的部分都有一小部分代码没有实现，也是局部变量传参的问题，目前着手解决这个问题，先传一个版本上去。
+
+经测试目前代码在80核上可以正确运行
+
+如有问题可随时联系
+微信：Gc_HanX
+电话：13933892002
+邮箱：hanxiang@cnic.cn
+
+

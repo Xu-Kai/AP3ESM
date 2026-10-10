@@ -1,0 +1,44 @@
+CC=mpicc
+FC=mpif90
+CFLAGS=-DHAVE_MPI
+FFLAGS=-DHAVE_MPI
+OBJS = gptl.o GPTLutil.o GPTLget_memusage.o GPTLprint_memusage.o \
+       gptl_papi.o f_wrappers.o
+
+AR ?= ar
+ARFLAGS ?= ruv
+
+libgptl.a: $(OBJS)
+	$(AR) $(ARFLAGS) $@ $(OBJS)
+
+
+
+.c.o:
+	$(CC) -c $(INCLDIR) $(INCS) $(CFLAGS) $(CPPDEFS) $<
+.F.o:
+	$(FC) -c $(INCLDIR) $(INCS) $(FFLAGS) $(FPPDEFS) $(FIXEDFLAGS) $<
+.f90.o:
+	$(FC) -c $(INCLDIR) $(INCS) $(FFLAGS) $(FREEFLAGS)  $<
+.F90.o:
+	$(FC) -c $(INCLDIR) $(INCS) $(FFLAGS) $(FPPDEFS) $(FREEFLAGS)  $<
+
+mostlyclean:
+	$(RM) -f *.f *.f90
+
+clean:
+	$(RM) -f *.f *.f90 *.d *.$(MOD_SUFFIX) $(OBJS)
+
+
+install: libgptl.a
+	cp -p $(GPTL_DIR)/gptl.h $(SHAREDPATH)/include
+	cp -p *.$(MOD_SUFFIX) $(SHAREDPATH)/include
+	cp -p libgptl.a $(SHAREDPATH)/lib
+
+
+perf_mod.o: perf_utils.o
+f_wrappers.o: gptl.h private.h
+f_wrappers_pmpi.o: gptl.h private.h
+gptl.o: gptl.h private.h
+util.o: gptl.h private.h
+gptl_papi.o: gptl.h private.h
+pmpi.o: gptl.h private.h

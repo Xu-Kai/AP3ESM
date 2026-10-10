@@ -1,0 +1,54 @@
+ &namctl
+  AM_HOR     = 0            ! Laplacian horizontal viscosity for momentum and for both barotropic and baroclinic
+  AH_HOR     = 0            ! Laplacian horizontal diffusivity for active tracers and ssh, recommend zero
+  GAMMA      = 30.0D0       ! Restoration timescale for SSS and SST without seaice (3 days with seaice), plz check tracer.F90
+  AM_BIHAR   = 3.5         ! Biharmonic horizontal viscosity for for baro-tropic&clinic uv, startup=3.5,restart=1.6
+  AH_BIHAR   = -1.0D+8     ! Biharmonic horizontal diffusivity for ssh (100%), ss (120%), and tt (80%), better check code
+  IDTB       = 9            ! Attention, IDTC and IDTS must be mutiple of IDTB 
+  IDTC       = 45           ! Attention, IDTC and IDTS must be divisible by 3600
+  IDTS       = 45	    ! TimeStep size in seconds
+  NHIS       = 1440   	    ! 1440 means every 24 hours write fort, unit: min
+  AFB1       = 0.20         ! Actually not use now, cuz Euler forward
+  AFC1       = 0.43
+  AFT1       = 0.43         ! Actually not use now, cuz Euler forward
+  AMV        = 0.0E-3       ! vertical viscosity coeffcient in m**2/sec, original 1.0E-3, but actually not use in src
+  AHV        = 0.0E-4       ! vertical diffusion coeffcient in m**2/sec, original 0.3E-4, but actually not use in src
+  C0F        = 2.8D-3       ! friction coefficient
+  NTIMES     = 14400        ! 30 days, total number of timesteps in current run. 10 days: 10*86400/10=86400 
+  NSTART     = 1            ! 1: startup 0: restart 
+  timeref    = 20000102     ! time reference
+  adv_momentum ="centered"
+  adv_tracer   ="tspas"       ! Please choose "tspas" or "prm"
+  iyfmfnew   = 0
+  num_cpl     = 48 
+  diag_msf     =.false.
+  diag_mth     =.false.
+  diag_bsf     =.false.
+  diag_budget   =.false.
+  simple_assm  =.false.
+  dailybudget_accum =.false.
+  daily_accum =.true.
+  IO_HIST     = 1
+  IO_REST     = 1
+  klv         = 80 
+  kvt         = 80
+  rest_freq    = 1          ! restart file frequency, not use now
+  boundary_restore = 2      ! 0 for no restoring , 1 for lateral restoring boundary, and 2 for surface salinity restoring boundary
+  out_dir     = "./"
+ /
+&domain_nml
+   nprocs_clinic = 2808 
+   nprocs_tropic = 2808
+   clinic_distribution_type = 'cartesian_noland'
+   tropic_distribution_type = 'cartesian_noland'
+   ew_boundary_type = 'cyclic'
+   ns_boundary_type = 'tripole'
+   profile_barrier  = .false.
+/
+&grid_nml
+ horiz_grid_file = 'grid.da'
+ vert_grid_file  = 'depth.da'
+ topography_file = 'kmt.da'
+ basin_grid_file = 'Basin.data'
+ horiz_grid_opt = 'tripole'
+/

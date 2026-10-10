@@ -1,0 +1,72 @@
+INCLUDES := -I$(CASEROOT)/bld/atm/obj \
+			-I$(CASEROOT)/bld/cpe/obj \
+			-I$(CASEROOT)/bld/cpl/obj \
+			-I$(CASEROOT)/bld/esp/obj \
+			-I$(CASEROOT)/bld/glc/obj \
+			-I$(CASEROOT)/bld/iac/obj \
+			-I$(CASEROOT)/bld/ice/obj \
+			-I$(CASEROOT)/bld/lnd/obj \
+			-I$(CASEROOT)/bld/ocn/obj \
+			-I$(CASEROOT)/bld/rof/obj \
+			-I$(CASEROOT)/bld/wav/obj \
+			-I$(CASEROOT)/bld/gnu/mvapich2/nodebug/nothreads/mct/mct/noesmf/c1a1l1i1o1r1g1w1i1e1/csm_share \
+			-I$(CASEROOT)/bld/gnu/mvapich2/nodebug/nothreads/mct/mct/noesmf/c1a1l1i1o1r1g1w1i1e1/include \
+			-I$(CASEROOT)/bld/lib/include \
+			-I$(CASEROOT)/SourceMods/src.cpe
+
+CC = swgcc -mslave
+FC = swgfortran -mslave
+
+FREEFLAGS  := -ffree-form
+FC_AUTO_R8 := -fdefault-double-8 -fdefault-real-8
+CPPFLAGS   := -cpp
+CFLAGS     := -g -std=gnu99 -msimd
+FFLAGS     := -g -mieee -msimd -fconvert=big-endian -ffree-line-length-none -ffixed-line-length-none -fcray-pointer
+
+FFLAGS += $(FREEFLAGS) $(FC_AUTO_R8)
+
+SRCROOT     := $(CASEROOT)/SourceMods/src.cpe
+OBJROOT_CPE := $(CASEROOT)/bld/cpe/obj
+
+C_SRC     := $(patsubst $(SRCROOT)/%.c,%.c,$(wildcard $(SRCROOT)/*.c))
+F90_SRC   := $(patsubst $(SRCROOT)/%.f90,%.f90,$(wildcard $(SRCROOT)/*.f90))
+F90PP_SRC := $(patsubst $(SRCROOT)/%.F90,%.F90,$(wildcard $(SRCROOT)/*.F90))
+OBJS      := $(patsubst %.c, %.o, $(C_SRC)) $(patsubst %.F90, %.o, $(F90PP_SRC)) $(patsubst %.f90, %.o, $(F90_SRC))
+
+vpath %.c $(SRCROOT)
+vpath %.F90 $(SRCROOT)
+vpath %.f90 $(SRCROOT)
+
+all: libcpe.a
+
+Filepath:
+	readlink -f $(SRCROOT) > $@
+
+Deppath: Filepath
+	cp $< $@
+
+Srcfiles: Filepath
+	cd $(OBJROOT_CPE) && $(CASEROOT)/Tools/mkSrcfiles
+
+Depends: Deppath Srcfiles
+	$(CASEROOT)/Tools/mkDepends $^ > $@
+-include Depends
+
+libcpe.a: $(OBJS)
+	if [ -e $@ ]; then rm $@ ; fi
+	ar cr $@ $^
+
+%.o: %.c
+	$(CC) $(CFLAGS) $(INCLUDES) -c $< -o $@
+%.o: %.F90
+	$(FC) $(FFLAGS) $(INCLUDES) $(CPPFLAGS) -c $< -o $@
+%.o: %.f90
+	$(FC) $(FFLAGS) $(INCLUDES) -c $< -o $@
+
+install: libcpe.a
+	cp libcpe.a $(CASEROOT)/bld/lib
+
+.PHONY: clean
+
+clean:
+	rm -f *.o *.mod

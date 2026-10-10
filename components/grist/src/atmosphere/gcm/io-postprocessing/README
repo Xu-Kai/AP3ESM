@@ -1,0 +1,6 @@
+io后处理流程
+1.编译后处理程序sh build_io.sh
+2.将编译后的可执行程序、submit_jobs.sh拷贝到模式输出的result目录
+3.执行sh submit_jobs.sh n 提交作业进行io数据合并过程,其中n为进程数，推荐使用io通信分组数
+4.执行copy.sh将合并后离散的nc文件按照变量名进行分类，注意修改脚本中的源路径和目标路径
+

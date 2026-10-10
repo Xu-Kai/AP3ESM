@@ -1,0 +1,51 @@
+#define SPMD
+#define  SYNCH
+#undef  FRC_ANN
+#define CDFIN
+#undef  FRC_DAILY
+#undef  FRC_CORE
+#undef SOLAR
+#define  ACOS
+#define  BIHAR
+#undef  SMAG_FZ
+#undef  SMAG_OUT
+#define NETCDF
+#undef BOUNDARY
+#define NODIAG
+#undef  ICE
+#undef SHOW_TIME
+#undef DEBUG
+#define COUP
+#undef  ISO
+#undef  ISOOUT
+#define D_PRECISION
+#undef  CANUTO
+#define  CANUTO2010
+#undef  SMAG
+#define SSSNORM
+#undef BCKMEX
+#define SOLARCHLORO 
+#define NJMT 2302
+#define NIMT 3600
+#define NKM 80
+#define TIDEMIX
+#undef LDD97
+#define HIGHRES
+#undef LOWRES 
+#undef ISO_TYPE_BF
+#undef CANUTOMIXOUT
+#undef LPFDIAG
+#define DAILYACC
+#define MONTHACC
+#undef DAILYBUGDET
+#undef OMIPDIAG
+#define SPLIT_WRITE
+#define READ_BASIN_TOPO_SPLIT  
+#define READ_GRID_SPLIT  
+#define SPLIT_RPT  
+#define NPROC_ALL 1560
+#define  SW_ATHREAD
+#define ENABLE_GPLT
+#undef HOUROUTPUT
+#define GRID_SPLIT_FILE
+#define READ_SPLIT

@@ -1,0 +1,110 @@
+MODEL		?= GCM_AMIPW
+MACHINE         ?= sunway
+GRIST_CORE      ?= TRUE
+#include 	Macros.grist
+
+
+INCLUDES := -I$(CASEROOT)/bld/atm/obj \
+			-I$(CASEROOT)/bld/cpe/obj \
+			-I$(CASEROOT)/bld/cpl/obj \
+			-I$(CASEROOT)/bld/esp/obj \
+			-I$(CASEROOT)/bld/glc/obj \
+			-I$(CASEROOT)/bld/iac/obj \
+			-I$(CASEROOT)/bld/ice/obj \
+			-I$(CASEROOT)/bld/lnd/obj \
+			-I$(CASEROOT)/bld/ocn/obj \
+			-I$(CASEROOT)/bld/rof/obj \
+			-I$(CASEROOT)/bld/wav/obj \
+			-I$(CASEROOT)/bld/gnu/mvapich2/nodebug/nothreads/mct/include \
+			-I$(CASEROOT)/bld/gnu/mvapich2/nodebug/nothreads/mct/mct/noesmf/c1a1l1i1o1r1g1w1i1e1/csm_share \
+			-I$(CASEROOT)/bld/gnu/mvapich2/nodebug/nothreads/mct/mct/noesmf/c1a1l1i1o1r1g1w1i1e1/include \
+			-I$(CASEROOT)/bld/lib/include \
+			-I$(CASEROOT)/SourceMods/src.cpe \
+			-I$(CASEROOT)/SourceMods/src.atm
+
+
+
+#NETCDF_PATH = /usr/sw/yyzlib/netcdf
+#PNETCDF_PATH = /usr/sw/yyzlib/pnetcdf
+#LAPACK_PATH = /usr/sw/yyzlib/lapack-3.8.0
+
+NETCDF_PATH = /home/export/online1/mdt00/shisuan/swgbcm/xukai/GB25/CESM2.2/sw9gcc-libs
+PNETCDF_PATH = /home/export/online1/mdt00/shisuan/swgbcm/xukai/GB25/CESM2.2/sw9gcc-libs
+LAPACK_PATH = /home/export/online1/mdt00/shisuan/swgbcm/xukai/GB25/CESM2.2/sw9gcc-libs
+
+METIS_LIB_PATH = /home/export/online1/mdt00/shisuan/swgbcm/xduan/metis
+SWLU_PATH=/home/export/online1/mdt00/shisuan/swgbcm/xduan/swlu/
+GPTL_PATH      = /home/export/online1/mdt00/shisuan/swgbcm/jesong/software/gptl3
+FC       = /home/export/base/shisuan/swgbcm/jesong/software/swgomp/bin/mpixfort.py
+CC       = /home/export/base/shisuan/swgbcm/jesong/software/swgomp/bin/mpixcc.py
+CXX      = /home/export/base/shisuan/swgbcm/jesong/software/swgomp/bin/mpixcxx.py
+LINK     = /home/export/base/shisuan/swgbcm/jesong/software/swgomp/bin/mpixfort.py
+
+
+#-DLAM_DOMAIN
+VPATH           := $(subst $(space), :, $(shell cat Filepath))
+MAIN_OBJ        := grist_atmos.o
+X :=$(shell echo $(MAIN_OBJ))
+OBJS            := $(filter-out grist_partition.o,$(filter-out $(MAIN_OBJ),$(addsuffix .o,$(basename $(shell cat Srcfiles)))))
+EXE_ATM         := ../ParGRIST-$(MODEL)-$(MACHINE).exe
+EXE_PAR         := ../partition-$(MODEL)-$(MACHINE).exe
+
+ifeq ($(GRIST_CORE), TRUE)
+FFLAGS   = -msimd -fmath-opt -O2 -mieee -ffree-line-length-320 -I$(GPTL_PATH) -I$(NETCDF_PATH)/include -I$(PNETCDF_PATH)/include  -DCDATE -DUSE_HALO2 -g  -DGB25  -DUVT_OUT -DGROUPIO -Dreduction_enable -DWITH_GPTL 
+CFLAGS   = -msimd -fmath-opt -O2 -mieee -I$(NETCDF_PATH)/include -I$(PNETCDF_PATH)/include -DCDATE -DUSE_HALO2 -g -I$(SWLU_PATH)/include
+CXXFLAGS = -msimd -fmath-opt -O2 -mieee -I$(NETCDF_PATH)/include -I$(PNETCDF_PATH)/include -fno-trapping-math
+endif
+
+
+
+#LIBS     = -L$(NETCDF_PATH)/lib -lnetcdff -lnetcdf -L$(PNETCDF_PATH)/lib -lpnetcdf -L$(LAPACK_PATH)/ -llapack -lrefblas -L$(METIS_LIB_PATH) -lmetis -lstdc++ -L$(SWLU_PATH)/lib -lswlu_mpi 
+LIBS := -L$(METIS_LIB_PATH) -lmetis -L$(GPTL_PATH) -lgptl
+LIBS     = -L$(NETCDF_PATH)/lib -lnetcdff -lnetcdf -L$(PNETCDF_PATH)/lib -lpnetcdf -L$(LAPACK_PATH)/ -llapack -lrefblas -L$(METIS_LIB_PATH) -lmetis -L$(GPTL_PATH)  -lgptl -lstdc++  \
+            -lm_slave
+BE = -fconvert=big-endian
+R8 = -fdefault-real-8 -fdefault-double-8
+CPPDEFS        = -I$(NETCDF_PATH)/include -I$(PNETCDF_PATH)/include -I$(SWLU_PATH)/include -I$(GPTL_PATH)
+FLAGS_SWM       :=
+FLAGS_GCM       := -DCDATE
+FLAGS_GCM_AMIPC := -DSPIO -DCMAPI -DCDATE -DAMIPC_PHYSICS -DUSE_NOAHMP -DOCNABD -DCAM3OCNABD
+FLAGS_GCM_AMIPW := -DRRTMG_V381 -DSCALE_TBCU -DSPIO -DUSE_LEAP_YEAR $(BE) $(R8) -DAMIPW_PHYSICS -DAMIPW_CLIMATE -DUSE_NOAHMP -DCDATE  
+FLAGS_GCM_AMIPW_MIXED := -DRRTMG_V381 -DSCALE_TBCU -DSPIO -DUSE_LEAP_YEAR $(BE) $(R8) -DAMIPW_PHYSICS -DAMIPW_CLIMATE -DUSE_NOAHMP -DCDATE -DMIXCODE
+FLAGS_AMIPW     := $(FLAGS_GCM_AMIPW)
+FLAGS_AMIPC     := $(FLAGS_GCM_AMIPC)
+FLAGS_AMIPW_MIXED     := $(FLAGS_GCM_AMIPW_MIXED)
+FLAGS_SCM_PhysC := -DSPIO -DCDATE -DAMIPC_PHYSICS -DSCM_PHYSICS 
+FLAGS_SCM_PhysW := -DRRTMG_V381 -DSCALE_TBCU -DSPIO -DUSE_LEAP_YEAR $(BE) $(R8) -DAMIPW_PHYSICS -DAMIPW_CLIMATE -DSCM_PHYSICS -DCDATE
+FFLAGS          += $(FLAGS_GCM_AMIPW) -I../../src/include -DUSE_HALO2
+
+.SUFFIXES:
+MAKEFLAGS += --no-builtin-rules
+all: $(EXE_ATM)
+$(EXE_ATM): $(MAIN_OBJ) $(OBJS)
+	$(LINK) $(LDFLAGS) $^ -o $@ $(LIBS)
+%.o: %.cpp
+	$(CXX) $(CXXFLAGS) -c $< -o $@
+%.o: %.c
+	$(CC) $(CFLAGS) -c $< -o $@
+%.o: %.F90
+	$(FC) $(FFLAGS) -c $< -o $@
+%.o: %.F
+	$(FC) $(FFLAGS) -c $< -o $@
+%.inc: %.inc.in
+	cp $< $@
+include Depends
+.PHONY: clean
+clean:
+	rm *.o *.mod *.exe Srcfiles Filepath Depends
+
+
+
+
+
+
+
+
+
+
+
+
+

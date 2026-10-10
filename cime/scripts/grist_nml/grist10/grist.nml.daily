@@ -1,0 +1,126 @@
+&ctl_para
+ day_duration           = 14
+ model_timestep         = 80
+ h1_history_freq        = 1080
+ h1_restart_freq        = 1080
+ run_type               = 'init'
+ working_mode           = 'amipw'
+ write_history          = .true.
+ write_history_h1       = .true.
+ write_restart_h1       = .false.
+ write_stepinfo         = .true.
+ test_real_case         = .true.
+ doAquaPlanet           = .false.
+ start_ymd              = 20230718
+ start_tod              = 0
+ comm_group_size        = 20
+ grid_info              = "G10UR"
+/
+&data_para
+ outdir                 = './result/'
+ gridFilePath           = '/home/export/online1/mdt00/shisuan/swgbcm/licom/data/GB25/Grist-Data/G10/grid/'
+ gridFileNameHead       = 'grist.grid_file.g10.ccvt'
+ staticFilePath         = '/home/export/online1/mdt00/shisuan/swgbcm/licom/data/GB25/Grist-Data/G10/grid/static_g10.nc'
+ initialAtmFilePath     = '/home/export/online1/mdt00/shisuan/swgbcm/licom/data/GB25/Grist-Data/G10/init/grist.era5.initial.pl.g10.20230718.00.nc'
+ initialLndFilePath     = '/home/export/online1/mdt00/shisuan/swgbcm/licom/data/GB25/Grist-Data/G10/init/grist.era5.initial.pl.g10.20230718.00.nc'
+ sstFilePath            = '/home/export/online1/mdt00/shisuan/swgbcm/licom/data/GB25/Grist-Data/G10/sstsic/'
+ initialDataSorc        = 'ERAIP'
+ numMonSST              = 1
+ sstFile_year_beg       = 2023
+ real_sst_style         = 'DAILY'
+ sstFileNameHead        = 'realNoMissERA5sstsic.'
+ sstFileNameTail        = '.g10.nc'
+/
+&swe_para
+ testcase               = 6
+ initialfield           = 6
+ nsplit                 = 6
+ time_scheme            = ''
+ advection_scheme       = 2
+ isolate_advection_test = .false.
+ conserve_scheme        = 'te'
+ test_dual_cell         = .false.
+ pv_order               = 2,2,2
+ generate_cdo_file      = .true.
+ use_limiter_rk3        = .false.
+ use_tr_mbs             = .false.
+ use_tspas              = .false.
+ ke_method              = 1
+ ke_alpha               = 0.9
+ mass_wtd_vor           = .true.
+ modon_radius           = 500000.
+/
+&dycore_para
+ gcm_testcase           = 'real-ERAIP'
+ mas_adv_flag           = 2
+ pot_adv_flag           = 33,33,33
+ phi_adv_flag           = 33,33,33
+ www_adv_flag           = 33,33,33
+ ver_adv_flag           = 3
+ hor_pgf_flag           = 6
+ nrk                    = 3
+ nh_dynamics            = .false.
+ www_damping_coef       = 0.2
+ d3d_damping_coef       = 0.12
+ zd                     = 20000.
+ imbeta                 = 0.55
+ imkesi                 = 0.55
+ smg_coef               = 0.01
+ ko4_coef               = 2e10
+ ref_leng               = 7500
+ do_dycore_laplacian_2nd= .true.
+ do_dycore_laplacian_4th= .true.
+ ad_dycore_laplacian_2nd= .true.
+ ad_dycore_laplacian_4th= .true.
+ eqs_vert_diff          = .true.
+ nexpdif_level          = 64
+ nsponge                = 10
+ spcoef                 = 0
+ use_expdif_tstep       = .true.
+ profile_type           = 'tp1'
+ dycore_timestep        = 10
+ vr_mode                = .false.
+ index_flag             = 'bfs'
+ www_k2coef_type        = 'SMG'
+ smooth_topo            = .true.
+ nsmooth_topo           = 10
+ smooth_type            = 'cellAvg'
+ topo_type              = 'static'
+ doNotDiagnose          = .true.
+/
+&tracer_para
+ ntracer                = 6
+ nmif                   = 6
+ mif_index              = 1,2,3,4,5,6
+ isolate_tracer_test    = .false.
+ tracer_timestep        = 40
+ tracer_hori_timestep   = 40
+ tracer_vert_timestep   = 40
+ tracer_hvsplit_method  = 1
+ tracer_transport_hori_scheme = 'rk3o3'
+ tracer_transport_vert_scheme = 'rk3o3-aimp'
+/
+&physics_para
+ nspecies               = 6
+ use_phys               = .true.
+ physpkg                = 'AMIPW_PHYSICS'
+ sub_physpkg            = 'none'
+ ptend_wind_rk_on       = .true.
+ ptend_heat_rk_on       = .true.
+ ptend_dycore_f1_on     = .false.
+ ptend_tracer_f1_on     = .false.
+ ptend_f2_on            = .true.
+ ptendSubDiabPhys       = .true.
+ physics_coupling       = 'P3'
+ use_som                = .false.
+/
+&mesh_para
+ mesh_nv                = 10485762
+ mesh_glv               = 10
+ nlev                   = 30
+ nlevp                  = 31
+ nlev_inidata           = 37
+ levsoil                = 4
+/
+&ccvt_para
+/

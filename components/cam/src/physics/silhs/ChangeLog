@@ -1,0 +1,102 @@
+======================================================================
+
+Tag: silhs_clubb_release_b76a124_20200220_c20200320
+Tag creator: cacraig, Brian Griffin
+Date created: March 20, 2020
+Command(s) issued:
+  git clone https://github.com/larson-group/clubb_release
+  cd clubb_release
+  git checkout b76a124
+
+No CAM specific changes needed to be made
+======================================================================
+
+Tag: silhs_ncar_backwards_compat_20181205_c20191001
+Tag creator: cacraig, nusbaume
+Date created: Oct 1, 2019
+Command(s) issued:
+  git clone https://github.com/larson-group/clubb_release
+  cd clubb_release
+  git checkout ncar_backwards_compat_20181205
+  cd ~/clubb_release/src/SILHS
+  
+  commit everything in this directory, adding in the ChangeLog from CAM's vendor tags repo
+
+======================================================================
+
+Tag: silhs_ncar_backwards_compat_20181205
+Tag creator: cacraig
+Date created: April 29, 2019
+Command(s) issued:
+  git clone https://github.com/larson-group/clubb_release
+  cd clubb_release
+  git checkout ncar_backwards_compat_20181205
+
+  svn co https://svn-ccsm-models.cgd.ucar.edu/silhs/vendor_trunk
+  cd vendor_trunk
+  cp ~/clubb_release/src/SILHS/* .
+
+Status:
+M       ChangeLog
+A       README
+M       est_kessler_microphys_module.F90
+M       generate_uniform_sample_module.F90
+M       latin_hypercube_arrays.F90
+M       latin_hypercube_driver_module.F90
+M       lh_microphys_var_covar_module.F90
+M       math_utilities.F90
+M       output_2D_samples_module.F90
+M       parameters_silhs.F90
+M       silhs_api_module.F90
+M       silhs_importance_sample_module.F90
+M       transform_to_pdf_module.F90
+
+======================================================================
+Tag: silhs_r8099
+Tag creator: cacraig
+Date created: April 11, 2016
+Command(s) issued:
+   svn co https://svn-ccsm-models.cgd.ucar.edu/silhs/vendor_trunk silhs_r8099
+   cd silhs_r8099
+   svn merge -r8029:8099 http://carson.math.uwm.edu/repos/clubb_repos/trunk/src/SILHS
+
+Status:
+M       latin_hypercube_driver_module.F90
+
+======================================================================
+Tag: silhs_r8029
+Tag creator: cacraig
+Date created: April 11, 2016
+Command(s) issued:
+   svn co  https://svn-ccsm-models.cgd.ucar.edu/silhs/vendor_trunk silhs_r8029
+   cd silhs_r8029
+   svn merge -r7416:8029 http://carson.math.uwm.edu/repos/clubb_repos/trunk/src/SILHS
+   svn resolve --accept=working generate_lh_sample_module.F90
+   svn delete generate_lh_sample_module.F90
+   svn resolve --accept=working permute_height_time_module.F90
+   svn delete permute_height_time_module.F90
+
+Status:
+M       ChangeLog
+M       est_kessler_microphys_module.F90
+D       generate_lh_sample_module.F90
+A       generate_uniform_sample_module.F90
+M       latin_hypercube_arrays.F90
+M       latin_hypercube_driver_module.F90
+A       lh_microphys_var_covar_module.F90
+M       math_utilities.F90
+M       output_2D_samples_module.F90
+M       parameters_silhs.F90
+D       permute_height_time_module.F90
+M       silhs_api_module.F90
+A       silhs_importance_sample_module.F90
+A       transform_to_pdf_module.F90
+
+======================================================================
+Tag: silhs_r7416
+Tag creator: cacraig
+Date created: April 11, 2016
+Command(s) issued:
+   svn co -r7416 http://carson.math.uwm.edu/repos/clubb_repos/trunk/src/SILHS silhs_r7416
+   svn import silhs_r7416 https://svn-ccsm-models.cgd.ucar.edu/silhs/vendor_trunk -m"Initial checkout of revision 7416 from UWM"
+======================================================================

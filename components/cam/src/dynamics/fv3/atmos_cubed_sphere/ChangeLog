@@ -1,0 +1,23 @@
+======================================================================
+Tag: fv3_cesm.00
+Tag creator: jet
+Date created: June 4, 2020
+Command(s) issued:
+initial fv3port tag based on dev/emc hash f908e537c168befed30af4e71590014b3ffffac9 for cam6_2_20
+added Changelog file
+modified files for port
+	modified:   model/fv_control.F90 - allow cesm routine to call register_tracers
+	modified:   model/fv_dynamics.F90 - hack to calculate and pass back energy variables to CESM
+	modified:   model/fv_sg.F90 - allow CESM use of hydrostatic branch of fv_subgrid_z -
+	modified:   tools/fv_grid_tools.F90 - bug fix - uninitialized vars caught by gcc - need to vet this
+
+git remote add NOAAEMC https://github.com/NOAA-EMC/GFDL_atmos_cubed_sphere
+git fetch --tags NOAAEMC
+git branch fv3port01 f908e537c168befed30af4e71590014b3ffffac9
+======================================================================
+Tag:
+Tag creator: jet
+Date created: June 4, 2020
+Command(s) issued:
+   fork https://github.com/NOAA-EMC/GFDL_atmos_cubed_sphere.git using git hub web interface
+======================================================================

@@ -1,0 +1,13 @@
+README
+------------
+
+invertnc is a generic tool for inverting the grid of specific variables 
+in the input nc file in a north-south direction
+
+
+Quick Start Guide:
+------------------
+
+> make all    # After successful execution, the executable file invertnc is generated in the run directory
+> cd run
+> ./submit_sw   # Make sure that the input nc file is copied to the run directory at this point

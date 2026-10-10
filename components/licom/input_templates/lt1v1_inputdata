@@ -1,0 +1,7 @@
+
+    #-----------------------------------------------------------------------------
+    #  identify all gx1v6 datasets residing in $DIN_LOC_ROOT
+    #-----------------------------------------------------------------------------
+    set topography_filename   = $DIN_LOC_ROOT/ocn/licom/lt1v1/grid/kmt.da
+    set horiz_grid_filename   = $DIN_LOC_ROOT/ocn/licom/lt1v1/grid/grid.da
+    set vert_grid_filename    = $DIN_LOC_ROOT/ocn/licom/lt1v1/grid/lt1v1_vert_grid

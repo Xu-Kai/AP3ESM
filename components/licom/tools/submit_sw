@@ -1,0 +1,1 @@
+bsub -p -I -q q_share -health 1 -pr -J invertnc -n 1 -cgsp 64 -host_stack 512 -share_size 13312  ./invertnc

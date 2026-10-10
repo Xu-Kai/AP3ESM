@@ -1,0 +1,346 @@
+<?xml version="1.0"?>
+
+<entry_id version="3.0">
+
+  <description modifier_mode="*">
+  <!--
+    ===============
+      GRIST
+    ===============
+   -->
+    <desc atm="GRIST60[%NOC][%NOCH][%1PCT][%4xCO2][%CCTS1]][%CCTS2][%CFIRE][%CVBSX][%NUDG][%PORT][%RCO2][%SCAM][%SDYN][%WCCM][%WCMD][%WCSC][%WCTS][%WXIE][%WXIED]">GRIST cam6 physics:</desc>
+    <desc atm="GRIST50[%NOC][%NOCH][%CCTS1][%CLB][%PORT][%RCO2][%SCAM][%SDYN][%WCSC][%WCTS]"                                                                      >GRIST cam5 physics:</desc>
+    <desc atm="GRIST40[%PORT][%RCO2][%SCAM][%SDYN][%TMOZ][%WX][%WXIE][%WXIED][%WCMD]"                                                                >GRIST cam4 physics:</desc>
+    <desc atm="GRIST30"                                                                                                                              >GRIST cam3 physics:</desc>
+    <desc atm="GRIST[%ADIAB][%DABIP04][%TJ16][%HS94][%KESSLER][%RCO2][%SPCAMS][%SPCAMCLBS][%SPCAMM][%SPCAMCLBM]"                                     >GRIST simplified and non-versioned physics :</desc>
+    <desc atm="GRIST[%NOC][%NOCH][%1PCT][%4xCO2][%CCTS1]][%CCTS2][%CFIRE][%CVBSX][%NUDG][%PORT][%RCO2][%SCAM][%SDYN][%WCCM][%WCMD][%WCSC][%WCTS][%WXIE][%WXIED]">GRIST cam6 physics:</desc>
+
+  <!--
+    ===============
+     GRIST and WACCM Options
+    ===============
+   -->
+    <desc option="4xCO2"        >abrupt quadrupling of CO2 with other forcings maintained at 1850 piControl levels (CMIP6 DECK abrupt4xCO2 experiment) :</desc>
+    <desc option="1PCT"         >ramped CO2 increasing by 1% per year with other forcings maintained at 1850 piControl levels (CMIP6 DECK 1pctCO2 experiment) :</desc>
+
+  <!--
+    ===============
+     SINGLE COLUMN GRIST
+    ===============
+   -->
+    <desc atm="GRIST%SCAM">GRIST stand-alone single column mode -- need to define usermods directory with IOP settings:</desc>
+    <desc atm="[%SDYN]">GRIST specified dynamics is used in finite volume dynamical core:</desc>
+    <desc atm="[%NUDG]">GRIST physics is nudged towards prescribed meteorology:</desc>
+  <!--
+    ===============
+     GRIST Options
+    ===============
+   -->
+    <desc option="CCTS1"        >GRIST-Chem troposphere/stratosphere chemistry with simplified VBS-SOA:</desc>
+    <desc option="CCTS2"        >GRIST-Chem troposphere/stratosphere chemistry with simplified VBS-SOA and expanded isoprene and terpene oxidation:</desc>
+    <desc option="CFIRE"        >GRIST-Chem troposphere/stratosphere chem with simplified volatility basis set SOA scheme and fire emissons :</desc>
+    <desc option="CLB"          >GRIST CLUBB - turned on by default in GRIST60:</desc>
+    <desc option="CVBSX"        >GRIST-Chem troposphere/stratosphere chem with extended volatility basis set SOA scheme and modal aersols :</desc>
+    <desc option="RCO2"         >GRIST CO2 ramp: </desc>
+    <desc option="SPCAMS"       >GRIST super-parameterized CAM one moment SAM microphysics </desc>
+    <desc option="SPCAMCLBS"    >GRIST super-parameterized CAM one moment SAM microphysics using CLUBB </desc>
+    <desc option="SPCAMM"       >GRIST super-parameterized CAM double moment m2005 SAM microphysics </desc>
+    <desc option="SPCAMCLBM"    >GRIST super-parameterized CAM double moment m2005 SAM microphysics using CLUBB </desc>
+    <desc option="TMOZ"         >GRIST tropospheric chemistry with bulk aerosols:</desc>
+
+  <!--
+    ===============
+     WACCM Options
+    ===============
+   -->
+    <desc option="WCCM"         >WACCM with middle atmosphere chemistry:</desc>
+    <desc option="WCMD"         >WACCM with middle atmosphere chemistry with enhanced D-region ion chemistry:</desc>
+    <desc option="WXIE"         >WACCM-X enhanced ionosphere, transport, and electrodynamics:</desc>
+    <desc option="WXIED"        >WACCM-X enhanced ionosphere, transport, and electrodynamics with D-region ion chemistry:</desc>
+    <desc option="WCSC"         >WACCM specified chemistry:</desc>
+    <desc option="WCTS"         >WACCM with tropospheric, stratospheric, mesospheric, and lower thermospheric chemistry:</desc>
+
+  <!--
+    ===============
+     SIMPLE MODELS Options
+    ===============
+   -->
+    <desc option="ADIAB"        >GRIST dry adiabatic configurarion (no physics forcing):</desc>
+    <desc option="DABIP04"      >GRIST dry adiabatic baroclinic instability (Polvani et al., 2004):</desc>
+    <desc option="TJ16"         >GRIST moist Held-Suarez forcing (Thatcher and Jablonowski, 2016):</desc>
+    <desc option="HS94"         >GRIST dry Held-Suarez forcing (Held and Suarez (1994)):</desc>
+    <desc option="KESSLER"      >GRIST moist dynamical core test with Ullrich et al. (2014) baroclinic wave IC, Kessler physics and terminator chemistry:</desc>
+
+  <!--
+    ===============
+     PORT
+    ===============
+   -->
+    <desc option="PORT"         >GRIST Parallel Offline Radiation Tool:</desc>
+  </description>
+
+  <entry id="COMP_ATM">
+    <type>char</type>
+    <valid_values>grist</valid_values>
+    <default_value>grist</default_value>
+    <group>case_comp</group>
+    <file>env_case.xml</file>
+    <desc>Name of atmospheric component</desc>
+  </entry>
+
+  <entry id="GRIST_CPPDEFS">
+    <type>char</type>
+    <valid_values></valid_values>
+    <default_value>UNSET</default_value>
+    <group>build_component_grist</group>
+    <file>env_build.xml</file>
+    <desc>GRIST cpp definitions (setup automatically - DO NOT EDIT)</desc>
+  </entry>
+
+  <entry id="GRIST_DYCORE">
+    <type>char</type>
+    <valid_values>eul,fv,fv3,se</valid_values>
+    <default_value>fv</default_value>
+    <values match="last">
+      <value grid="a%T[1-9]" >eul</value>
+      <value grid="a%ne[0-9]">se</value>
+      <value grid="a%C[0-9]" >fv3</value>
+    </values>
+    <group>build_component_grist</group>
+    <file>env_build.xml</file>
+    <desc>GRIST dynamical core</desc>
+  </entry>
+
+  <entry id="GRIST_CONFIG_OPTS">
+    <type>char</type>
+    <valid_values></valid_values>
+    <default_value></default_value>
+    <values match="last" modifier='additive'>
+      <value compset="_GRIST30">-phys cam3</value>
+      <value compset="_GRIST40">-phys cam4</value>
+      <value compset="_GRIST50">-phys cam5</value>
+      <value compset="_GRIST60">-phys cam6</value>
+      <value compset="_GRIST">-phys cam6</value>
+
+      <!-- Modifiers for CAM runs (%.* includes SCAM runs) -->
+      <value compset="_(GRIST50|GRIST60)%.*(CCTS1|CFIRE)">-chem trop_strat_mam4_vbs</value>
+
+      <value compset="(GRIST50|GRIST60)%NOC">-chem none -noclubb_sgs</value>
+      <value compset="(GRIST50|GRIST60)%NOCH">-chem none</value>
+      <value compset="GRIST60%CVBSX">-chem trop_strat_mam4_vbsext</value>
+      <value compset="GRIST60%CCTS2">-chem trop_strat_mam4_ts2</value>
+      <value compset="_GRIST50%CLB">-clubb_sgs</value>
+      <value compset="_(GRIST40|GRIST50|GRIST60).*%SCAM">-dyn eul -scam</value>
+      <value compset="GRIST%SPCAMS">-rad camrt -chem none -spcam_nx 32 -spcam_ny 1 -spcam_dx 4000 -spcam_dt 20 -phys spcam_sam1mom </value>
+      <value compset="GRIST%SPCAMCLBS">-rad camrt -chem none -spcam_nx 32 -spcam_ny 1 -spcam_dx 4000 -spcam_dt 20 -phys spcam_sam1mom -spcam_clubb_sgs </value>
+      <value compset="GRIST%SPCAMM">-rad rrtmg -chem trop_mam3 -spcam_nx 32 -spcam_ny 1 -spcam_dx 4000 -spcam_dt 20 -phys spcam_m2005 </value>
+      <value compset="GRIST%SPCAMCLBM">-rad rrtmg -chem trop_mam3 -spcam_nx 32 -spcam_ny 1 -spcam_dx 4000 -spcam_dt 20 -phys spcam_m2005 -spcam_clubb_sgs </value>
+      <value compset="_GRIST40%TMOZ">-chem trop_mozart</value>
+
+      <value compset="_GRIST.*_BGC%B">-co2_cycle</value>
+
+      <!-- Match against "%WC" to set defaults for all WACCM cases. -->
+      <!-- Later settings of "-chem" take precedence over earlier ones. -->
+      <value compset="_(GRIST50|GRIST60)%(WC|CC|CV|CF)">-age_of_air_trcs</value>
+      <value compset="_GRIST40%WCCM">-chem waccm_ma</value>
+      <value compset="_(GRIST50|GRIST60)%WCCM">-chem waccm_ma_mam4</value>
+      <value compset="_(GRIST50|GRIST60)%WCMD">-chem waccm_mad_mam4</value>
+      <value compset="_(GRIST50|GRIST60)%WCSC">-chem waccm_sc_mam4</value>
+      <value compset="_(GRIST50|GRIST60)%WCTS">-chem waccm_tsmlt_mam4</value>
+      <value compset="_GRIST40%WCMD">-chem waccm_mad</value>
+      <value compset="_GRIST\d0%WXIE">-waccmx -ionosphere wxie</value>
+      <value compset="_GRIST40%WXIE(_|%)">-chem waccm_ma</value>
+      <value compset="_GRIST40%WXIED">-chem waccm_mad</value>
+      <value compset="_GRIST60%WXIE(_|%)">-chem waccm_ma_mam4</value>
+      <value compset="_GRIST60%WXIED">-chem waccm_mad_mam4</value>
+
+      <value compset="_GRIST.*%SDYN">-offline_dyn</value>
+      <value compset="_GRIST\d0%SDYN_CLM">-nlev 56</value>
+      <value compset="_GRIST\d0%CC.*%SDYN">-nlev 56</value>
+      <value compset="_GRIST\d0%WC.*%SDYN">-nlev 88</value>
+      <value compset="_GRIST\d0%WX.*%SDYN">-nlev 145</value>
+
+      <!-- Simple models -->
+      <value compset="_GRIST%ADIAB">-phys adiabatic</value>
+      <value compset="_GRIST%DABIP04">-phys adiabatic</value>
+      <value compset="_GRIST%TJ16">-phys tj2016 -analytic_ic</value>
+      <value compset="_GRIST%HS94">-phys held_suarez -analytic_ic</value>
+      <value compset="_GRIST%KESSLER">-phys kessler -chem terminator -analytic_ic -nadv_tt=6</value>
+
+      <!-- Aquaplanet -->
+      <value compset="_DOCN%SOMAQP">-aquaplanet</value>
+      <value compset="_DOCN%AQP"   >-aquaplanet</value>
+
+      <!-- PORT -->
+      <value compset="%PORT">-offline_drv rad</value>
+    </values>
+    <group>build_component_grist</group>
+    <file>env_build.xml</file>
+    <desc>
+      GRIST configure options, see GRIST configure utility for details
+      Provides option(s) for the GRIST configure utility.
+      GRIST_CONFIG_OPTS are normally set as compset variables (e.g., -phys  GRIST4 -chem waccm_ma)
+      and in general should not be modified for supported compsets.  It is recommended that if you want
+      to modify this value for your experiment, you should use your own user-defined
+      component sets via using create_newcase with a compset_file argument
+    </desc>
+  </entry>
+
+  <entry id="GRIST_NML_USE_CASE">
+    <type>char</type>
+    <valid_values></valid_values>
+    <default_value>UNSET</default_value>
+    <values match="last">
+      <value compset="1850_GRIST40"        >1850_cam4</value>
+      <value compset="1850_GRIST50"        >1850_cam5</value>
+
+      <value compset="1850_GRIST60"        >1850_cam6</value>
+      <value compset="1850_GRIST60%WCTS"   >waccm_tsmlt_1850_cam6</value>
+      <value compset="1850_GRIST60%WCCM"   >waccm_ma_1850_cam6</value>
+      <value compset="1850_GRIST60%WCSC"   >waccm_sc_1850_cam6</value>
+
+      <value compset="2000_GRIST40%TMOZ"   >2000_cam4_trop_chem</value>
+      <value compset="2000_GRIST40%WXIE"   >waccmxie_ma_2000_cam4</value>
+
+      <value compset="2000_GRIST60"        >2000_cam6</value>
+      <value compset="2000_GRIST60%WCTS"   >waccm_tsmlt_2000_cam6</value>
+      <value compset="2000_GRIST60%WCCM"   >waccm_ma_2000_cam6</value>
+      <value compset="2000_GRIST60%WCSC"   >waccm_sc_2000_cam6</value>
+      <value compset="2000_GRIST60%.*CCTS1"  >2000_trop_strat_vbs_cam6</value>
+      <value compset="2000_GRIST60%WXIE"   >waccmx_ma_2000_cam6</value>
+
+      <value compset="2000_GRIST30_SLND_SICE_DOCN%AQP"   >aquaplanet_cam3</value>
+      <value compset="2000_GRIST40_SLND_SICE_DOCN%SOMAQP">aquaplanet_cam4</value>
+      <value compset="2000_GRIST40_SLND_SICE_DOCN%AQP"   >aquaplanet_cam4</value>
+      <value compset="2000_GRIST50_SLND_SICE_DOCN%SOMAQP">aquaplanet_cam5</value>
+      <value compset="2000_GRIST50_SLND_SICE_DOCN%AQP"   >aquaplanet_cam5</value>
+      <value compset="2000_GRIST60_SLND_SICE_DOCN%SOMAQP">aquaplanet_cam6</value>
+      <value compset="2000_GRIST60_SLND_SICE_DOCN%AQP"   >aquaplanet_cam6</value>
+      <value compset="2000_GRIST60_SLND_SICE_DOCN%AQPCONST" >aquaplanet_rce_cam6</value>
+      <value compset="2000_GRIST60%WCCM_SLND_SICE_DOCN%AQP"   >aquaplanet_waccm_ma_2000_cam6</value>
+
+      <value compset="2010_GRIST60"        >2010_cam6</value>
+      <value compset="2010_GRIST60%.*CCTS1"  >2010_trop_strat_vbs_cam6</value>
+      <value compset="2010_GRIST60%WCTS"   >waccm_tsmlt_2010_cam6</value>
+      <value compset="2010_GRIST60%WCSC"   >waccm_sc_2010_cam6</value>
+
+      <value compset="AMIP_GRIST50"        >1850-2005_cam5</value>
+      <value compset="AMIP_GRIST40"        >1850-2005_cam4</value>
+
+      <value compset="HIST_GRIST40"        >1850-2005_cam4</value>
+      <value compset="HIST_GRIST40.*_BGC%B">1850-2005_cam4_bgc</value>
+      <value compset="HIST_GRIST40%WXIE"   >1950-2010_ccmi_refc1_waccmx_ma</value>
+      <value compset="HIST_GRIST50"        >1850-2005_cam5</value>
+      <value compset="HIST_GRIST60"        >hist_cam6</value>
+      <value compset="HIST_GRIST60%WCTS"   >waccm_tsmlt_hist_cam6</value>
+      <value compset="HIST_GRIST60%WCSC"   >waccm_sc_hist_cam6</value>
+      <value compset="HIST_GRIST60%WCCM"   >waccm_ma_hist_cam6</value>
+      <value compset="HIST_GRIST60%WCMD"   >waccm_ma_hist_cam6</value>
+      <value compset="HIST_GRIST40%WCMD"   >waccm_ma_hist_cam4</value>
+      <value compset="HIST_GRIST60%.*CCTS1"  >hist_trop_strat_vbs_cam6</value>
+      <value compset="HIST_GRIST60%.*CCTS[12]%NUDG">hist_trop_strat_nudged_cam6</value>
+      <value compset="HIST_GRIST60%CVBSX"  >hist_trop_strat_vbsext_cam6</value>
+      <value compset="HIST_GRIST60%CFIRE"  >hist_trop_strat_vbsfire_cam6</value>
+      <value compset="HIST_GRIST60%WXIE"   >waccmx_ma_hist_cam6</value>
+
+      <value compset="PIPD_GRIST50"        >1850-PD_cam5</value>
+
+      <value compset="RCP2_GRIST40"        >2005-2100_cam4_rcp26</value>
+      <value compset="RCP4_GRIST40"        >2005-2100_cam4_rcp45</value>
+      <value compset="RCP4_GRIST40.*_BGC%B">2005-2100_cam4_rcp45_bgc</value>
+      <value compset="RCP6_GRIST40"        >2005-2100_cam4_rcp60</value>
+      <value compset="RCP8_GRIST40"        >2005-2100_cam4_rcp85</value>
+      <value compset="RCP8_GRIST40.*_BGC%B">2005-2100_cam4_rcp85_bgc</value>
+
+      <value compset="RCP2_GRIST50"        >2006-2100_cam5_rcp26</value>
+      <value compset="RCP4_GRIST50"        >2006-2100_cam5_rcp45</value>
+      <value compset="RCP6_GRIST50"        >2006-2100_cam5_rcp60</value>
+      <value compset="RCP8_GRIST50"        >2006-2100_GRIST5_rcp85</value>
+
+      <value compset="_GRIST40%WXIED%SDYN"  >sd_waccmx_ma_cam4</value>
+      <value compset="_GRIST40%WXIE%SDYN"   >sd_waccmx_ma_cam4</value>
+      <value compset="_GRIST60%WXIED%SDYN"  >sd_waccmx_ma_cam6</value>
+      <value compset="_GRIST60%WXIE%SDYN"   >sd_waccmx_ma_cam6</value>
+      <value compset="_GRIST60%WCTS%SDYN"   >sd_waccm_tsmlt_cam6</value>
+      <value compset="_GRIST60%WCCM%SDYN"   >sd_waccm_ma_cam6</value>
+      <value compset="_GRIST60%WCMD%SDYN"   >sd_waccm_ma_cam6</value>
+      <value compset="_GRIST40%WCMD%SDYN"   >sd_waccm_ma_cam4</value>
+      <value compset="_GRIST60%.*CCTS1%SDYN"  >sd_trop_strat_vbs_cam6</value>
+      <value compset="_GRIST60%.*CCTS2%SDYN"  >sd_trop_strat2_cam6</value>
+      <value compset="_GRIST60%SDYN_CLM50"  >sd_cam6</value>
+
+      <value compset="2000_GRIST%DABIP04"  >dabi_p2004</value>
+      <value compset="GRIST%HS94"          >held_suarez_1994</value>
+      <value compset="GRIST%TJ16"          >dctest_tj2016</value>
+      <value compset="GRIST%KESSLER"       >dctest_baro_kessler</value>
+
+      <!-- SCAM defaults to ARM97, all other IOPs are in usermods_dirs -->
+      <!--       <value compset="CAM[456]0%SCAM"    >scam_arm97</value> -->
+    </values>
+    <group>run_component_grist</group>
+    <file>env_run.xml</file>
+    <desc>GRIST namelist use_case.  Provides the use_case option for the
+      GRIST build-namelist utility (which is called from
+      $CASEROOT/Buildconf/grist.buildnml).  The GRIST build-namelist
+      leverages groups of namelist options (use cases) that are often
+      paired with the GRIST configure options.  These use cases are xml
+      files located in
+      $CIMEROOT/../components/grist/bld/namelist_files/use_cases.
+      In general, this variable should not be modified for supported
+      component sets (compsets).  Recommendation: If you want to
+      modify this value for your experiment, use your own user-defined
+      component sets.</desc>
+  </entry>
+
+  <entry id="GRIST_NAMELIST_OPTS">
+    <type>char</type>
+    <valid_values></valid_values>
+    <default_value></default_value>
+    <values match="last" modifier="additive">
+      <value compset="_GRIST.*%RCO2"> scenario_ghg=&apos;RAMP_CO2_ONLY&apos;ramp_co2_annual_rate=1 </value>
+      <value compset="_GRIST60%4xCO2"> co2vmr=1138.8e-6  </value>
+      <value compset="_GRIST60%WCTS%4xCO2"> flbc_cycle_yr=1  </value>
+      <value compset="_GRIST60%WCTS%4xCO2"> flbc_file='$DIN_LOC_ROOT/atm/waccm/lb/LBC_CMIP6abrupt4xCO2_cyclicalYear1_0p5degLat_c180929.nc'  </value>
+      <value compset="_GRIST60%WCTS%4xCO2"> ncdata='$DIN_LOC_ROOT/atm/waccm/ic/b.e21.BW1850.f09_g17.CMIP6-piControl.001.cam.i.0070-01-01.abrupt4xCO2_c181003.nc'  </value>
+      <value compset="_GRIST60%WCTS%4xCO2"> nlte_limit_co2=.true.  </value>
+      <value compset="_GRIST60%1PCT"> flbc_type='SERIAL'</value>
+      <value compset="_GRIST60%1PCT"> flbc_file='$DIN_LOC_ROOT/atm/waccm/lb/LBC_CMIP6_1pctCO2_y1-165_GlobAnnAvg_0p5degLat_c180929.nc'</value>
+      <value compset="_GRIST60%1PCT"> flbc_list='CO2','CH4','N2O','CFC11eq','CFC12' </value>
+      <value compset="_GRIST60%WCTS%1PCT"> flbc_type='SERIAL' </value>
+      <value compset="_GRIST60%WCTS%1PCT"> flbc_cycle_yr=-1 </value>
+      <value compset="_GRIST60%WCTS%1PCT"> flbc_file='$DIN_LOC_ROOT/atm/waccm/lb/LBC_CMIP6_1pctCO2ramp_y1-165_0p5degLat_c180930.nc'</value>
+      <value compset="_GRIST60%WCTS%1PCT"> nlte_limit_co2=.true.</value>
+      <value compset="_BGC%BDRD"> co2_cycle_rad_passive=.true. </value>
+      <!-- rearth provided by FMS for FV3 and must remain fixed to that value to maintain consistency between phys/dyn. -->
+      <value grid="a%C[0-9]"> rearth = 6.37122D6 </value>
+    </values>
+    <group>run_component_grist</group>
+    <file>env_run.xml</file>
+    <desc>GRIST specific namelist settings for -namelist option Provides
+      options to the -namelist argument for the GRIST build-namelist
+      utility.  This should be reserved for component set
+      specification. Users should modify GRIST namelists only via the
+      $CASEROOT/user_nl_grist file.</desc>
+  </entry>
+
+  <entry id="GRIST_USER_MODS">
+    <type>char</type>
+    <valid_values></valid_values>
+    <default_value></default_value>
+    <values match="last">
+    <value compset="DOCN%AQP">$COMP_ROOT_DIR_ATM/cime_config/usermods_dirs/aquap</value>
+    <value compset="DOCN%SOMAQP">$COMP_ROOT_DIR_ATM/cime_config/usermods_dirs/aquap</value>
+    <value compset="GRIST%.*SCAM" >$COMP_ROOT_DIR_ATM/cime_config/usermods_dirs/scam_mandatory</value>
+    </values>
+    <group>run_component_grist</group>
+    <file>env_case.xml</file>
+    <desc>User mods to apply to specific compset matches. </desc>
+  </entry>
+
+  <help>
+    =========================================
+    CAM naming conventions
+    =========================================
+  </help>
+
+</entry_id>

@@ -1,0 +1,53 @@
+ &namctl
+  AM_HOR     = 600
+  AH_HOR     = 600
+  AM_BIHAR   = -2.8D+10
+  AH_BIHAR   = -2.8D+10
+  IDTB       = 10
+  IDTC       = 80
+  IDTS       = 80
+  AFB1       =0.2
+  AFC1       =0.43
+  AFT1       =0.43
+  AMV        = 1
+  AHV        = 0.3E-4
+  GAMMA      = 20.0D0
+  NUMBER     = 12000
+  NSTART     = 1
+  yearadd    = 0
+  dayadd     = 0
+  iyfmfnew   = 0
+  num_cpl     = 4 
+  diag_msf   =.false.
+  diag_mth   =.false.
+  diag_bsf   =.false.
+  diag_budget   =.false.
+  simple_assm  =.false.
+  dailybudget_accum =.false.
+  daily_accum =.true.
+  IO_HIST    = 1
+  IO_REST    = 1
+  klv        = 55
+  kvt        = 55 
+  rest_freq  = 1
+  out_dir    = "./"
+  adv_momentum ="centered"
+  adv_tracer   ="tspas"
+  boundary_restore = 2   ! 0 for no restoring , 1 for lateral restoring boundary, and 2 for surface salinity restoring boundary
+ /
+&domain_nml
+   nprocs_clinic = 2808
+   nprocs_tropic = 2808
+   clinic_distribution_type = 'balanced'
+   tropic_distribution_type = 'cartesian'
+   ew_boundary_type = 'cyclic'
+   ns_boundary_type = 'tripole'
+   profile_barrier  = .false.
+/
+&grid_nml
+ horiz_grid_file = 'grid.da'
+ vert_grid_file  = 'depth.da'
+ topography_file = 'kmt.da'
+ basin_grid_file = 'Basin.data'
+ horiz_grid_opt = 'tripole'
+/
