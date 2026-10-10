@@ -45,7 +45,7 @@ The coupler and the components brought in with CESM 2.2 follow the UCAR/NCAR ter
 
 ## Acknowledgements
 
-AP3ESM builds on the kilometer-scale GRIST atmosphere, the kilometer-scale LICOM ocean model, and the CESM 2.2 coupler ported to Sunway. The performance experiments used Sunway OceanLight at the National Supercomputing Center in Wuxi and ORISE at the Computer Network Information Center, Chinese Academy of Sciences. CESM is developed by NCAR and its partners.
+AP3ESM builds on the kilometer-scale GRIST atmosphere, the kilometer-scale LICOM ocean model, and the CESM 2.2 coupler ported to Sunway. The performance experiments used Sunway OceanLight and ORISE. CESM is developed by NCAR and its partners.
 
 ## Reference
 
